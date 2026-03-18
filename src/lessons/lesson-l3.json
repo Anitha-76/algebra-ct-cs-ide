@@ -1,0 +1,89 @@
+{
+  "id": "l3",
+  "title": "Lesson 1D: Sharing Equally",
+  "subtitle": "L3",
+  "problem": {
+    "statement": "A group of 4 friends collect x rupees together and decide to split it equally among themselves.",
+    "question": "How much does each friend get?"
+  },
+  "steps": [
+    {
+      "id": 1,
+      "type": "textarea",
+      "title": "Step 1: Understand the Problem",
+      "prompt": "💭 What does 'split equally among 4 friends' mean? Explain in your own words.",
+      "placeholder": "Type your explanation here...",
+      "validation": {
+        "type": "open-ended",
+        "concept": "Splitting equally means the total is divided into 4 equal parts, so each friend gets the total divided by 4",
+        "successMessage": "Good thinking!",
+        "hintMessage": "Think about what happens to the total when it is shared equally among everyone..."
+      }
+    },
+    {
+      "id": 2,
+      "type": "number",
+      "title": "Step 2: Try with Concrete Numbers",
+      "prompt": "💭 If the friends collect 40 rupees in total, how much does each friend get?",
+      "placeholder": "Enter a number",
+      "validation": {
+        "type": "exact",
+        "answer": 10,
+        "successMessage": "Correct! 40 ÷ 4 = 10.",
+        "hintMessage": "Remember, the total is split equally among 4 friends."
+      }
+    },
+    {
+      "id": 3,
+      "type": "radio",
+      "title": "Step 3: Identify the Pattern",
+      "prompt": "💭 What mathematical operation are you using?",
+      "options": ["Addition", "Subtraction", "Multiplication", "Division"],
+      "validation": {
+        "type": "exact",
+        "answer": "Division",
+        "successMessage": "Yes! We are dividing by 4 each time.",
+        "hintMessage": "When a total is shared equally among a group, which operation do we use?"
+      }
+    },
+    {
+      "id": 4,
+      "type": "expression",
+      "title": "Step 4: Write the General Expression",
+      "prompt": "💭 Write how much each friend gets using x:",
+      "placeholder": "Write using x",
+      "validation": {
+        "type": "expression",
+        "answer": "x / 4",
+        "successMessage": "Perfect! x / 4 is the algebraic expression.",
+        "hintMessage": "Use x for the total amount and divide by the number of friends."
+      }
+    }
+  ],
+  "desmos": {
+    "expression": "y = x / 4",
+    "explanation": "Your expression y = x / 4 is graphed below. Notice how this line is much less steep compared to the previous lessons. Use the graph to explore how each friend's share (y) changes as the total collected (x) changes."
+  },
+  "pyret": {
+    "starterCode": "use context starter2024\n\n# Lesson 1D: Sharing Equally\nfun each-friends-share(total):\n  total / 4\nend\n\n# Write your own check cases below.\n# Pick any total amount and predict each friend's share before running.\ncheck:\n  each-friends-share(40) is 10\n  # Add your own below:\nend"
+  },
+  "check": {
+    "questions": [
+      {
+        "id": 1,
+        "prompt": "Now you have seen all four operations across four lessons. How does the steepness of each graph relate to the operation used?",
+        "placeholder": "Type your answer here..."
+      },
+      {
+        "id": 2,
+        "prompt": "Which of the four representations across all lessons helped you understand division best: the expression, the graph, or the code? Why?",
+        "placeholder": "Type your answer here..."
+      },
+      {
+        "id": 3,
+        "prompt": "Can you think of another real-life situation that could be modeled by x / 4?",
+        "placeholder": "Type your answer here..."
+      }
+    ]
+  }
+}

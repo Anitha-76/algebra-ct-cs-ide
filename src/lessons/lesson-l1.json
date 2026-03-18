@@ -1,0 +1,89 @@
+{
+  "id": "l1",
+  "title": "Lesson 1B: Pocket Money",
+  "subtitle": "L1",
+  "problem": {
+    "statement": "Ravi gets x rupees as weekly allowance. He spends 4 rupees on bus fare every week.",
+    "question": "How much money does Ravi have left after paying for bus fare?"
+  },
+  "steps": [
+    {
+      "id": 1,
+      "type": "textarea",
+      "title": "Step 1: Understand the Problem",
+      "prompt": "💭 What does 'spends 4 rupees' mean for the total amount Ravi has? Explain in your own words.",
+      "placeholder": "Type your explanation here...",
+      "validation": {
+        "type": "open-ended",
+        "concept": "Spending means the total amount decreases, so we subtract 4 from Ravi's allowance",
+        "successMessage": "Good thinking!",
+        "hintMessage": "Think about what happens to the total when you spend money..."
+      }
+    },
+    {
+      "id": 2,
+      "type": "number",
+      "title": "Step 2: Try with Concrete Numbers",
+      "prompt": "💭 If Ravi gets 10 rupees, how much does he have left after bus fare?",
+      "placeholder": "Enter a number",
+      "validation": {
+        "type": "exact",
+        "answer": 6,
+        "successMessage": "Correct! 10 - 4 = 6.",
+        "hintMessage": "Remember, Ravi spends 4 rupees on bus fare."
+      }
+    },
+    {
+      "id": 3,
+      "type": "radio",
+      "title": "Step 3: Identify the Pattern",
+      "prompt": "💭 What mathematical operation are you using?",
+      "options": ["Addition", "Subtraction", "Multiplication", "Division"],
+      "validation": {
+        "type": "exact",
+        "answer": "Subtraction",
+        "successMessage": "Yes! We are subtracting 4 each time.",
+        "hintMessage": "When something is spent or taken away, which operation do we use?"
+      }
+    },
+    {
+      "id": 4,
+      "type": "expression",
+      "title": "Step 4: Write the General Expression",
+      "prompt": "💭 Write how much money Ravi has left using x:",
+      "placeholder": "Write using x",
+      "validation": {
+        "type": "expression",
+        "answer": "x - 4",
+        "successMessage": "Perfect! x - 4 is the algebraic expression.",
+        "hintMessage": "Use x for Ravi's allowance and subtract what he spends."
+      }
+    }
+  ],
+  "desmos": {
+    "expression": "y = x - 4",
+    "explanation": "Your expression y = x - 4 is graphed below. Notice how the line shifts compared to y = x + 4 from the previous lesson. Use the graph to explore how Ravi's remaining money (y) changes as his allowance (x) changes."
+  },
+  "pyret": {
+    "starterCode": "use context starter2024\n\n# Lesson 1B: Pocket Money\nfun ravi-money(allowance):\n  allowance - 4\nend\n\n# Write your own check cases below.\n# Pick any value for allowance and predict the answer before running.\ncheck:\n  ravi-money(10) is 6\n  # Add your own below:\nend"
+  },
+  "check": {
+    "questions": [
+      {
+        "id": 1,
+        "prompt": "How is the graph of y = x - 4 different from y = x + 4 in the previous lesson? What does that difference tell you?",
+        "placeholder": "Type your answer here..."
+      },
+      {
+        "id": 2,
+        "prompt": "Which representation helped you understand subtraction best: the expression, the graph, or the code? Why?",
+        "placeholder": "Type your answer here..."
+      },
+      {
+        "id": 3,
+        "prompt": "Can you think of another real-life situation that could be modeled by x - 4?",
+        "placeholder": "Type your answer here..."
+      }
+    ]
+  }
+}

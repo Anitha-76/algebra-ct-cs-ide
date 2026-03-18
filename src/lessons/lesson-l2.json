@@ -1,0 +1,89 @@
+{
+  "id": "l2",
+  "title": "Lesson 1C: Festival Laddus",
+  "subtitle": "L2",
+  "problem": {
+    "statement": "Priya is making laddus for a festival. Each laddu needs 4 spoons of sugar.",
+    "question": "If Priya makes x laddus, how many spoons of sugar does she need in total?"
+  },
+  "steps": [
+    {
+      "id": 1,
+      "type": "textarea",
+      "title": "Step 1: Understand the Problem",
+      "prompt": "💭 What does 'each laddu needs 4 spoons' mean for the total sugar needed? Explain in your own words.",
+      "placeholder": "Type your explanation here...",
+      "validation": {
+        "type": "open-ended",
+        "concept": "Each laddu needs 4 spoons, so the total sugar grows by 4 for every laddu made, meaning we multiply",
+        "successMessage": "Good thinking!",
+        "hintMessage": "Think about what happens to the total sugar each time one more laddu is made..."
+      }
+    },
+    {
+      "id": 2,
+      "type": "number",
+      "title": "Step 2: Try with Concrete Numbers",
+      "prompt": "💭 If Priya makes 10 laddus, how many spoons of sugar does she need?",
+      "placeholder": "Enter a number",
+      "validation": {
+        "type": "exact",
+        "answer": 40,
+        "successMessage": "Correct! 10 × 4 = 40.",
+        "hintMessage": "Remember, each laddu needs 4 spoons of sugar."
+      }
+    },
+    {
+      "id": 3,
+      "type": "radio",
+      "title": "Step 3: Identify the Pattern",
+      "prompt": "💭 What mathematical operation are you using?",
+      "options": ["Addition", "Subtraction", "Multiplication", "Division"],
+      "validation": {
+        "type": "exact",
+        "answer": "Multiplication",
+        "successMessage": "Yes! We are multiplying by 4 each time.",
+        "hintMessage": "When the same amount is repeated for each item, which operation do we use?"
+      }
+    },
+    {
+      "id": 4,
+      "type": "expression",
+      "title": "Step 4: Write the General Expression",
+      "prompt": "💭 Write the total sugar needed using x:",
+      "placeholder": "Write using x",
+      "validation": {
+        "type": "expression",
+        "answer": "4x",
+        "successMessage": "Perfect! 4x is the algebraic expression.",
+        "hintMessage": "Use x for the number of laddus and multiply by the sugar needed for each one."
+      }
+    }
+  ],
+  "desmos": {
+    "expression": "y = 4x",
+    "explanation": "Your expression y = 4x is graphed below. Notice how much steeper this line is compared to the previous lessons. Use the graph to explore how the total sugar (y) changes as the number of laddus (x) changes."
+  },
+  "pyret": {
+    "starterCode": "use context starter2024\n\n# Lesson 1C: Festival Laddus\nfun sugar-needed(laddus):\n  4 * laddus\nend\n\n# Write your own check cases below.\n# Pick any number of laddus and predict the sugar needed before running.\ncheck:\n  sugar-needed(10) is 40\n  # Add your own below:\nend"
+  },
+  "check": {
+    "questions": [
+      {
+        "id": 1,
+        "prompt": "How is the graph of y = 4x different from y = x + 4 and y = x - 4? What does the steepness of the line tell you?",
+        "placeholder": "Type your answer here..."
+      },
+      {
+        "id": 2,
+        "prompt": "Which representation helped you understand multiplication best: the expression, the graph, or the code? Why?",
+        "placeholder": "Type your answer here..."
+      },
+      {
+        "id": 3,
+        "prompt": "Can you think of another real-life situation that could be modeled by 4x?",
+        "placeholder": "Type your answer here..."
+      }
+    ]
+  }
+}

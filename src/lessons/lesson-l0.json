@@ -1,0 +1,258 @@
+{
+  "id": "l0",
+  "title": "Lesson 1A: Ages",
+  "subtitle": "L0",
+  "problem": {
+    "statement": "Selvi and Thamarai are siblings. Thamarai is 4 years older than Selvi.",
+    "question": "If Selvi is x years old, how old is Thamarai?"
+  },
+"steps": [
+  {
+    "id": 1,
+    "type": "textarea",
+    "title": "Step 1: Understand the Problem",
+    "prompt": "💭 What does 'older by 4' mean in your own words?",
+    "placeholder": "Type your explanation here...",
+    "validation": {
+      "type": "open-ended",
+      "concept": "Thamarai is older than Selvi by 4 years, meaning we add 4 to Selvi's age",
+      "successMessage": "Good thinking!",
+      "hintMessage": "Think about what operation you use when someone is older...",
+      "hints": [
+        "Remember, Thamarai is OLDER than Selvi by 4 years.",
+        "When someone is older, we ADD to their age.",
+        "Try thinking: If Selvi is 10, Thamarai would be 10 + 4 = 14."
+      ]
+    }
+  },
+  {
+    "id": 2,
+    "type": "radio",
+    "title": "Step 2: Identify the Operation",
+    "prompt": "💭 Thamarai is older than Selvi by 4 years. What mathematical operation does 'older by' suggest?",
+    "options": ["Addition", "Subtraction", "Multiplication", "Division"],
+    "validation": {
+      "type": "exact",
+      "answer": "Addition",
+      "successMessage": "Yes! When someone is older, we add. We always add 4 to Selvi's age to get Thamarai's age.",
+      "hintMessage": "When something is 'more than' another, which operation do we use?"
+    }
+  },
+  {
+    "id": 3,
+    "type": "number",
+    "title": "Step 3: Try with Concrete Numbers",
+    "prompt": "💭 Now let's try it. If Selvi is 10 years old, how old is Thamarai?",
+    "placeholder": "Enter a number",
+    "validation": {
+      "type": "exact",
+      "answer": 14,
+      "successMessage": "Correct! 10 + 4 = 14. You used addition, just like you identified in Step 2.",
+      "hintMessage": "Remember, Thamarai is 4 years older than Selvi. You said the operation is addition."
+    }
+  },
+  {
+    "id": 4,
+    "type": "expression-builder",
+    "title": "Step 4: Write the General Expression",
+    "prompt": "💭 In Step 3, Selvi was 10 and you added 4. But Selvi's age could be anything. Use x to represent Selvi's age and build the expression for Thamarai's age:",
+    "parts": {
+      "left": "x",
+      "operatorOptions": ["+", "-", "×", "÷"],
+      "rightPlaceholder": "enter a number"
+    },
+    "validation": {
+  "type": "expression-builder",
+  "operator": "+",
+  "constant": 4,
+  "successMessage": "Perfect! x + 4 means: whatever Selvi's age is, add 4 to get Thamarai's age.",
+  "wrongOperatorMessage": "Think about which operation you identified in Step 2.",
+  "wrongConstantMessage": "You have the right operation! Now check the number — how much older is Thamarai?",
+  "hintMessage": "In Step 3, Selvi was 10 and Thamarai was 14. What did you do to 10 to get 14?",
+  "hints": [
+    "You already know the operation from Step 2.",
+    "How many years older is Thamarai than Selvi?",
+    "The expression is: x + 4"
+  ],
+  "confirmationBox": {
+    "expression": "Thamarai's age = x + 4",
+    "message": "This works for any age!",
+    "buttonLabel": "Got it — Continue"
+  }
+}
+  },
+  {
+    "id": 5,
+    "type": "table-bridge",
+    "title": "Step 5: From Examples to Equation",
+    "prompt": "Let's see if your expression works for different ages. Look at this pattern:",
+    "table": {
+      "headers": ["Selvi's age", "Calculation"],
+      "rows": [
+        { "input": 10, "calculation": "Thamarai's age = 10 + 4 = 14" },
+        { "input": 14, "calculation": "Thamarai's age = 14 + 4 = 18" },
+        { "input": 5,  "calculation": "Thamarai's age = 5 + 4 = 9" },
+        { "input": 20, "calculation": "Thamarai's age = 20 + 4 = 24" },
+        { "input": "x", "calculation": "Thamarai's age = x + 4" }
+      ]
+    },
+    "questions": [
+      {
+        "id": "5a",
+        "type": "radio",
+        "prompt": "Look at the table. Does Thamarai's age change depending on Selvi's age?",
+        "options": ["Yes", "No"],
+        "validation": {
+          "type": "exact",
+          "answer": "Yes",
+          "successMessage": "Correct! Thamarai's age changes every time Selvi's age changes. That means it is a variable.",
+          "hintMessage": "Look at the Calculation column — does the result stay the same or change?"
+        }
+      },
+      {
+        "id": "5b",
+        "type": "radio",
+        "prompt": "Since Thamarai's age changes, can we represent it with a variable?",
+        "options": ["Yes", "No"],
+        "validation": {
+          "type": "exact",
+          "answer": "Yes",
+          "successMessage": "Exactly! Any quantity that changes can be represented by a variable.",
+          "hintMessage": "A variable is a letter that stands for a changing value. Does Thamarai's age change?"
+        }
+      },
+      {
+        "id": "5c",
+        "type": "open-ended",
+        "prompt": "We need a variable for Thamarai's age. Can we use x? Why or why not? What letter would you use instead?",
+        "placeholder": "Type your answer here...",
+        "validation": {
+          "type": "open-ended",
+          "concept": "x is already used for Selvi's age, so we cannot reuse it. We need a different letter. Mathematicians conventionally use y for the output variable.",
+          "targetVariable": "y",
+          "successMessage": "Great thinking! x is already taken for Selvi's age. Mathematicians conventionally use y for the output — so we'll use y for Thamarai's age too, because that's what our graphing tool Desmos understands.",
+          "nudgeMessage": "That works mathematically! But the graphing tool we use next (Desmos) understands y as the output variable. Can you rewrite it using y instead?",
+          "hintMessage": "Remember, x already represents Selvi's age. Can we use the same letter for two different things?"
+        }
+      }
+    ],
+    "conclusion": {
+      "message": "Since y represents Thamarai's age, and Thamarai's age = x + 4, we can write:",
+      "equation": "y = x + 4",
+      "nextStep": "Now let's see what this equation looks like as a graph!"
+    }
+  }
+],
+  "desmos": {
+    "prediction": {
+      "enabled": true,
+      "prompt": "If we plot these 4 points on a graph, what pattern do you think they'll make?",
+      "context": "You found that y = x + 4\n\nIn Step 5, you calculated 4 examples:",
+      "pointsList": [
+        "(10, 14) - When Selvi is 10, Thamarai is 14",
+        "(14, 18) - When Selvi is 14, Thamarai is 18",
+        "(5, 9) - When Selvi is 5, Thamarai is 9",
+        "(20, 24) - When Selvi is 20, Thamarai is 24"
+      ],
+      "options": [
+        {
+          "value": "straight-line",
+          "label": "A straight line",
+          "feedback": "Excellent thinking! Let's see if you're right."
+        },
+        {
+          "value": "curved-line",
+          "label": "A curved line",
+          "feedback": "Interesting idea! Let's check the graph."
+        },
+        {
+          "value": "scattered",
+          "label": "Scattered points (no pattern)",
+          "feedback": "Let's see what happens! Remember, we have an equation y = x + 4."
+        },
+        {
+          "value": "zigzag",
+          "label": "A zigzag pattern",
+          "feedback": "Creative thinking! Let's explore the actual pattern."
+        }
+      ]
+    },
+    "expression": "y = x + 4",
+    "beforeGraph": {
+      "title": "From Your Table to the Graph",
+      "tableMapping": [
+        {"tableRow": "Selvi: 10, Thamarai: 14", "graphPoint": "(10, 14)"},
+        {"tableRow": "Selvi: 14, Thamarai: 18", "graphPoint": "(14, 18)"},
+        {"tableRow": "Selvi: 5, Thamarai: 9", "graphPoint": "(5, 9)"},
+        {"tableRow": "Selvi: 20, Thamarai: 24", "graphPoint": "(20, 24)"}
+      ],
+      "legend": [
+        "🔵 Blue dots = Your 4 calculated points",
+        "🔴 Red line = The equation y = x + 4"
+      ],
+      "notice": "Notice: All points lie perfectly on the line!"
+    },
+    "afterGraph": {
+      "title": "Explore and Discover",
+      "questions": [
+        "Can you find all 4 blue points on the graph?",
+        "Do they all touch the red line?"
+      ],
+      "keyInsight": {
+        "title": "Key Insight:",
+        "content": "The equation y = x + 4 doesn't just work for the 4 ages you calculated—it works for ANY age! That's the power of algebra: one equation describes infinite possibilities."
+      },
+      "axisLabels": {
+        "x": "Horizontal axis (x): Selvi's age",
+        "y": "Vertical axis (y): Thamarai's age"
+      }
+    }
+  },
+  "pyret": {
+    "starterCode": "use context starter2024\n\n# Lesson 1A: Ages\n\n# This defines a rule called thamarai-age. It takes Selvi's age as the input.\nfun thamarai-age(selvi-age):\n  selvi-age + 4  # Your rule — add 4 to Selvi's age. Same as x + 4.\nend  # The rule is finished.",
+    "purpose": "Your rule is written as code below. Read what each part means, then try it with any age.",
+    "codeExplanation": [
+      {
+        "code": "fun thamarai-age(selvi-age):",
+        "explanation": "This defines a rule called 'thamarai-age'. It takes Selvi's age as the input."
+      },
+      {
+        "code": "selvi-age + 4",
+        "explanation": "This is your rule — add 4 to Selvi's age to get Thamarai's age. Same as x + 4."
+      },
+      {
+        "code": "end",
+        "explanation": "This tells the computer the rule is finished."
+      },
+      {
+        "code": "check: thamarai-age(10) is 14",
+        "explanation": "This tests your rule — if Selvi is 10, Thamarai should be 14. The computer checks if that is true."
+      }
+    ],
+    "tryIt": {
+      "prompt": "Type Selvi's age and see Thamarai's age instantly.",
+      "inputLabel": "Selvi's age",
+      "buttonLabel": "Find Thamarai's age",
+      "resultLabel": "Thamarai's age is"
+    }
+  },
+  "check": {
+    "questions": [
+      {
+        "id": 1,
+        "prompt": "Do all three representations (expression, graph, code) show the same relationship? Explain.",
+        "placeholder": "Type your answer here..."
+      },
+      {
+        "id": 2,
+        "prompt": "Which representation helped you understand the problem best? Why?",
+        "placeholder": "Type your answer here..."
+      },
+      {
+        "id": 3,
+        "prompt": "Can you think of another real-life situation that could be modeled by x + 4?",
+        "placeholder": "Type your answer here..."
+      }
+    ]
+  }
+}
