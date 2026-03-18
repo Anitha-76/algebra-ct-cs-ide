@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { auth } from './firebase'
+import { auth, db } from './firebase'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
+import { saveProgress, loadProgress, saveUnlockedLessons, loadUnlockedLessons } from './utils/firestore'
 import l0 from './lessons/lesson-l0.json'
 import l1 from './lessons/lesson-l1.json'
 import l2 from './lessons/lesson-l2.json'
@@ -27,53 +28,102 @@ function App() {
   const [userPrediction, setUserPrediction] = useState(null)
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser)
       setAuthLoading(false)
+      if (firebaseUser) {
+        const unlocked = await loadUnlockedLessons(firebaseUser.uid)
+        setUnlockedLessons(unlocked)
+      }
     })
     return unsubscribe
   }, [])
 
+  useEffect(() => {
+    if (!user) return
+    const lesson = allLessons[currentLessonIndex]
+    loadProgress(user.uid, lesson.id).then(data => {
+      if (data) {
+        setLessonProgress(data.lessonProgress || {})
+        setTablePoints(data.tablePoints || [])
+        setPredictionMade(data.predictionMade || false)
+        setUserPrediction(data.userPrediction || null)
+      } else {
+        setLessonProgress({})
+        setTablePoints([])
+        setPredictionMade(false)
+        setUserPrediction(null)
+      }
+    })
+  }, [user, currentLessonIndex])
+
   const lesson = allLessons[currentLessonIndex]
 
-  function handleLessonComplete() {
+  async function handleLessonComplete() {
     const nextIndex = currentLessonIndex + 1
     if (nextIndex < allLessons.length) {
-      setUnlockedLessons(prev =>
-        prev.includes(nextIndex) ? prev : [...prev, nextIndex]
-      )
+      const updated = unlockedLessons.includes(nextIndex)
+        ? unlockedLessons
+        : [...unlockedLessons, nextIndex]
+      setUnlockedLessons(updated)
+      if (user) await saveUnlockedLessons(user.uid, updated)
     }
   }
 
-  function handleLessonSelect(index) {
+  async function handleLessonSelect(index) {
     if (unlockedLessons.includes(index)) {
       setCurrentLessonIndex(index)
       setActiveTab('task')
-      setLessonProgress({})
-      setTablePoints([])
-      setPredictionMade(false)
-      setUserPrediction(null)
     }
   }
 
-  function updateStepProgress(stepId, updates) {
-    setLessonProgress(prev => ({
-      ...prev,
+  async function updateStepProgress(stepId, updates) {
+    const updated = {
+      ...lessonProgress,
       [stepId]: {
-        ...prev[stepId],
+        ...lessonProgress[stepId],
         ...updates
       }
-    }))
+    }
+    setLessonProgress(updated)
+    if (user) {
+      await saveProgress(user.uid, lesson.id, {
+        lessonProgress: updated,
+        tablePoints,
+        predictionMade,
+        userPrediction
+      })
+    }
   }
 
-  function handleTableComplete(points) {
+  async function handleTableComplete(points) {
     setTablePoints(points)
+    if (user) {
+      await saveProgress(user.uid, lesson.id, {
+        lessonProgress,
+        tablePoints: points,
+        predictionMade,
+        userPrediction
+      })
+    }
   }
 
-  function handlePredictionSubmit(value) {
+  async function handlePredictionSubmit(value) {
     setPredictionMade(true)
     setUserPrediction(value)
-    updateStepProgress('desmos-prediction', { prediction: value })
+    const updated = {
+      ...lessonProgress,
+      'desmos-prediction': { prediction: value }
+    }
+    setLessonProgress(updated)
+    if (user) {
+      await saveProgress(user.uid, lesson.id, {
+        lessonProgress: updated,
+        tablePoints,
+        predictionMade: true,
+        userPrediction: value
+      })
+    }
   }
 
   if (authLoading) {
