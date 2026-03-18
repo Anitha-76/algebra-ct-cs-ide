@@ -9,44 +9,63 @@ function DesmosTab({ desmos, tablePoints, onPredictionSubmit, predictionMade, us
   const [showBridge, setShowBridge] = useState(false)
   const [comprehensionAnswer, setComprehensionAnswer] = useState(null)
   const [comprehensionFeedback, setComprehensionFeedback] = useState(null)
+  const [desmosReady, setDesmosReady] = useState(false)
+
+  // Poll until Desmos is available
+  useEffect(() => {
+    if (window.Desmos) {
+      setDesmosReady(true)
+      return
+    }
+    const interval = setInterval(() => {
+      if (window.Desmos) {
+        setDesmosReady(true)
+        clearInterval(interval)
+      }
+    }, 200)
+    return () => clearInterval(interval)
+  }, [])
 
   useEffect(() => {
-    if (!predictionMade || tablePoints.length === 0) return
+    if (!predictionMade || tablePoints.length === 0 || !desmosReady || !containerRef.current) return
 
-    if (!calculatorRef.current && window.Desmos && containerRef.current) {
-      calculatorRef.current = window.Desmos.GraphingCalculator(containerRef.current, {
-        expressions: true,
-        settingsMenu: true
-      })
-
-      calculatorRef.current.setMathBounds({
-        left: 0,
-        right: 25,
-        bottom: 0,
-        top: 30
-      })
-
-      // Plot the 4 points from the table
-      tablePoints.forEach((point, i) => {
-        calculatorRef.current.setExpression({
-          id: `table-point-${i}`,
-          latex: `(${point.x}, ${point.y})`,
-          color: Desmos.Colors.BLUE,
-          pointSize: 9,
-          showLabel: true,
-          label: `(${point.x}, ${point.y})`
-        })
-      })
-
-      // Plot the equation line
-      const restrictedExpression = desmos.expression + '\\{x\\geq0\\}'
-      calculatorRef.current.setExpression({
-        id: 'equation-line',
-        latex: restrictedExpression,
-        color: Desmos.Colors.RED,
-        lineWidth: 2
-      })
+    if (calculatorRef.current) {
+      calculatorRef.current.destroy()
+      calculatorRef.current = null
     }
+
+    calculatorRef.current = window.Desmos.GraphingCalculator(containerRef.current, {
+      expressions: true,
+      settingsMenu: true
+    })
+
+    calculatorRef.current.setMathBounds({
+      left: 0,
+      right: 25,
+      bottom: 0,
+      top: 30
+    })
+
+    // Plot the 4 points from the table
+    tablePoints.forEach((point, i) => {
+      calculatorRef.current.setExpression({
+        id: `table-point-${i}`,
+        latex: `(${point.x}, ${point.y})`,
+        color: window.Desmos.Colors.BLUE,
+        pointSize: 9,
+        showLabel: true,
+        label: `(${point.x}, ${point.y})`
+      })
+    })
+
+    // Plot the equation line
+    const restrictedExpression = desmos.expression + '\\{x\\geq0\\}'
+    calculatorRef.current.setExpression({
+      id: 'equation-line',
+      latex: restrictedExpression,
+      color: window.Desmos.Colors.RED,
+      lineWidth: 2
+    })
 
     return () => {
       if (calculatorRef.current) {
@@ -54,7 +73,7 @@ function DesmosTab({ desmos, tablePoints, onPredictionSubmit, predictionMade, us
         calculatorRef.current = null
       }
     }
-  }, [predictionMade, tablePoints, desmos.expression])
+  }, [predictionMade, tablePoints, desmos.expression, desmosReady])
 
   function handleComprehensionCheck() {
     if (comprehensionAnswer === 'Increases') {
@@ -83,11 +102,23 @@ function DesmosTab({ desmos, tablePoints, onPredictionSubmit, predictionMade, us
     )
   }
 
+  // Show message if task not completed yet
+  if (tablePoints.length === 0) {
+    return (
+      <div className="panel" role="tabpanel" id="panel-desmos">
+        <div className="task-container">
+          <p style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+            Complete the Task tab first to unlock the graph.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="panel" role="tabpanel" id="panel-desmos">
       <div className="desmos-container">
 
-        {/* Before graph explanation with prediction reference */}
         {desmos.beforeGraph && tablePoints.length > 0 && (
           <BeforeGraphExplanation
             beforeGraph={desmos.beforeGraph}
@@ -96,10 +127,14 @@ function DesmosTab({ desmos, tablePoints, onPredictionSubmit, predictionMade, us
           />
         )}
 
-        {/* Desmos graph */}
-        <div ref={containerRef} className="desmos" />
+        {!desmosReady ? (
+          <div style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
+            Loading graph...
+          </div>
+        ) : (
+          <div ref={containerRef} className="desmos" />
+        )}
 
-        {/* Comprehension question — shown immediately after graph */}
         {!showBridge && (
           <div className="comprehension-section">
             <p className="comprehension-prompt">
@@ -146,7 +181,6 @@ function DesmosTab({ desmos, tablePoints, onPredictionSubmit, predictionMade, us
           </div>
         )}
 
-        {/* Pyret bridge — appears after comprehension is correct */}
         {showBridge && (
           <PyretBridge
             keyInsight={desmos.afterGraph?.keyInsight?.content}
