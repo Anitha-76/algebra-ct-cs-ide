@@ -1,14 +1,31 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { validateLocal } from '../utils/validate'
 import { validateAI } from '../utils/validateAI'
 import TableBridgeStep from './TableBridgeStep'
 
 function TaskTab({ steps, problem, progress, onUpdateProgress, onTableComplete }) {
-  const [currentStep, setCurrentStep] = useState(1)
   const [answers, setAnswers] = useState({})
   const [feedback, setFeedback] = useState({})
-  const [completed, setCompleted] = useState(false)
   const [confirmationStep, setConfirmationStep] = useState(null)
+
+  // Derive currentStep and completed from progress instead of local state
+  function getCurrentStep() {
+    for (let i = steps.length; i >= 1; i--) {
+      const step = steps[i - 1]
+      const stepProgress = progress[step.id] || {}
+      if (stepProgress.completed) {
+        return i < steps.length ? i + 1 : i
+      }
+    }
+    return 1
+  }
+
+  function isCompleted() {
+    return steps.every(step => (progress[step.id] || {}).completed)
+  }
+
+  const currentStep = getCurrentStep()
+  const completed = isCompleted()
 
   function handleAnswerChange(stepId, value) {
     setAnswers(prev => ({ ...prev, [stepId]: value }))
@@ -68,18 +85,13 @@ function TaskTab({ steps, problem, progress, onUpdateProgress, onTableComplete }
       onUpdateProgress(step.id, {
         ...currentProgress,
         attempts: currentProgress.attempts + 1,
-        completed: true
+        completed: true,
+        hintsUnlocked: currentProgress.hintsUnlocked || 0
       })
       setFeedback(prev => ({ ...prev, [step.id]: { type: 'success', message: result.message } }))
 
       if (step.type === 'expression-builder' && step.validation.confirmationBox) {
         setConfirmationStep(step.id)
-      } else {
-        if (step.id < steps.length) {
-          setCurrentStep(step.id + 1)
-        } else {
-          setCompleted(true)
-        }
       }
     } else {
       const newAttempts = currentProgress.attempts + 1
@@ -87,10 +99,12 @@ function TaskTab({ steps, problem, progress, onUpdateProgress, onTableComplete }
 
       if (newAttempts >= 2 && validation.hints && validation.hints.length > 0) {
         const nextHintIndex = Math.min(
-          currentProgress.hintsUnlocked + 1,
+          (currentProgress.hintsUnlocked || 0) + 1,
           validation.hints.length
         )
         updates.hintsUnlocked = nextHintIndex
+      } else {
+        updates.hintsUnlocked = currentProgress.hintsUnlocked || 0
       }
 
       onUpdateProgress(step.id, { ...currentProgress, ...updates })
@@ -100,17 +114,12 @@ function TaskTab({ steps, problem, progress, onUpdateProgress, onTableComplete }
 
   function handleConfirmationContinue(step) {
     setConfirmationStep(null)
-    if (step.id < steps.length) {
-      setCurrentStep(step.id + 1)
-    } else {
-      setCompleted(true)
-    }
   }
 
   function unlockNextHint(step) {
     const stepProgress = progress[step.id] || { hintsUnlocked: 0, attempts: 0 }
     const nextHintIndex = Math.min(
-      stepProgress.hintsUnlocked + 1,
+      (stepProgress.hintsUnlocked || 0) + 1,
       step.validation.hints.length
     )
     onUpdateProgress(step.id, { ...stepProgress, hintsUnlocked: nextHintIndex })
@@ -118,24 +127,25 @@ function TaskTab({ steps, problem, progress, onUpdateProgress, onTableComplete }
 
   function renderHints(step) {
     const stepProgress = progress[step.id] || { hintsUnlocked: 0, attempts: 0 }
-    if (!step.validation.hints || stepProgress.hintsUnlocked === 0) return null
+    const hintsUnlocked = stepProgress.hintsUnlocked || 0
+    if (!step.validation.hints || hintsUnlocked === 0) return null
 
     return (
       <div className="hint-container">
         <h4 className="hint-title">💡 Hints</h4>
-        {step.validation.hints.slice(0, stepProgress.hintsUnlocked).map((hint, index) => (
+        {step.validation.hints.slice(0, hintsUnlocked).map((hint, index) => (
           <div key={index} className="hint-item">
             <span className="hint-number">Hint {index + 1}:</span>
             <span className="hint-text">{hint}</span>
           </div>
         ))}
         {stepProgress.attempts >= 2 &&
-         stepProgress.hintsUnlocked < step.validation.hints.length && (
+         hintsUnlocked < step.validation.hints.length && (
           <button className="hint-button" onClick={() => unlockNextHint(step)}>
             💡 Need another hint?
           </button>
         )}
-        {stepProgress.hintsUnlocked >= step.validation.hints.length && (
+        {hintsUnlocked >= step.validation.hints.length && (
           <p className="hint-exhausted">You've unlocked all hints. You can do this! 💪</p>
         )}
       </div>
@@ -273,11 +283,12 @@ function TaskTab({ steps, problem, progress, onUpdateProgress, onTableComplete }
                   step={step}
                   onComplete={(points) => {
                     onTableComplete(points)
-                    if (step.id < steps.length) {
-                      setCurrentStep(step.id + 1)
-                    } else {
-                      setCompleted(true)
-                    }
+                    onUpdateProgress(step.id, {
+                      ...(progress[step.id] || {}),
+                      completed: true,
+                      hintsUnlocked: 0,
+                      attempts: 1
+                    })
                   }}
                 />
               ) : (
