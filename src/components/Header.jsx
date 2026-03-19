@@ -1,5 +1,9 @@
-// Receives lesson title and subtitle from App.jsx via props
-function Header({ title, subtitle }) {
+function Header({ title, subtitle, onReset }) {
+  function handleReset() {
+    const confirmed = window.confirm('Are you sure you want to start over? All your progress for this lesson will be cleared.')
+    if (confirmed) onReset()
+  }
+
   return (
     <header className="topbar">
       <div className="brand">
@@ -7,8 +11,7 @@ function Header({ title, subtitle }) {
         <span className="subtitle">{subtitle}</span>
       </div>
       <div className="actions">
-        <button type="button">Save</button>
-        <button type="button">Load</button>
+        <button type="button" onClick={handleReset}>Start Over</button>
       </div>
     </header>
   )

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { auth, db } from './firebase'
+import { auth } from './firebase'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
 import { saveProgress, loadProgress, saveUnlockedLessons, loadUnlockedLessons } from './utils/firestore'
 import l0 from './lessons/lesson-l0.json'
@@ -58,6 +58,24 @@ function App() {
   }, [user, currentLessonIndex])
 
   const lesson = allLessons[currentLessonIndex]
+
+  async function handleReset() {
+    if (!user) return
+    await saveProgress(user.uid, lesson.id, {
+      lessonProgress: {},
+      tablePoints: [],
+      predictionMade: false,
+      userPrediction: null
+    })
+    await saveUnlockedLessons(user.uid, [0])
+    setLessonProgress({})
+    setTablePoints([])
+    setPredictionMade(false)
+    setUserPrediction(null)
+    setCurrentLessonIndex(0)
+    setUnlockedLessons([0])
+    setActiveTab('task')
+  }
 
   async function handleLessonComplete() {
     const nextIndex = currentLessonIndex + 1
@@ -136,7 +154,11 @@ function App() {
 
   return (
     <div>
-      <Header title={lesson.title} subtitle={lesson.subtitle} />
+      <Header
+        title={lesson.title}
+        subtitle={lesson.subtitle}
+        onReset={handleReset}
+      />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px' }}>
         <div style={{ display: 'flex', gap: '8px' }}>
           {allLessons.map((l, index) => (
