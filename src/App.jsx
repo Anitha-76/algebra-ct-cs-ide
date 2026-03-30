@@ -19,7 +19,8 @@ const allLessons = [l0, l1, l2, l3]
 function App() {
   const [user, setUser] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('task')
+//  const [activeTab, setActiveTab] = useState('task')
+const [activeTab, setActiveTab] = useState('pyret')
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0)
   const [unlockedLessons, setUnlockedLessons] = useState([0])
   const [lessonProgress, setLessonProgress] = useState({})

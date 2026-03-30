@@ -209,33 +209,116 @@
     }
   },
   "pyret": {
-    "starterCode": "use context starter2024\n\n# Lesson 1A: Ages\n\n# This defines a rule called thamarai-age. It takes Selvi's age as the input.\nfun thamarai-age(selvi-age):\n  selvi-age + 4  # Your rule — add 4 to Selvi's age. Same as x + 4.\nend  # The rule is finished.",
-    "purpose": "Your rule is written as code below. Read what each part means, then try it with any age.",
-    "codeExplanation": [
-      {
-        "code": "fun thamarai-age(selvi-age):",
-        "explanation": "This defines a rule called 'thamarai-age'. It takes Selvi's age as the input."
-      },
-      {
-        "code": "selvi-age + 4",
-        "explanation": "This is your rule — add 4 to Selvi's age to get Thamarai's age. Same as x + 4."
-      },
-      {
-        "code": "end",
-        "explanation": "This tells the computer the rule is finished."
-      },
-      {
-        "code": "check: thamarai-age(10) is 14",
-        "explanation": "This tests your rule — if Selvi is 10, Thamarai should be 14. The computer checks if that is true."
-      }
-    ],
-    "tryIt": {
-      "prompt": "Type Selvi's age and see Thamarai's age instantly.",
-      "inputLabel": "Selvi's age",
-      "buttonLabel": "Find Thamarai's age",
-      "resultLabel": "Thamarai's age is"
+  "starterCode": "use context starter2024\n\n# Lesson 1A: Ages\n\n# This defines a rule called thamarai-age. It takes Selvi's age as the input.\nfun thamarai-age(selvi-age):\n  selvi-age + 4  # Your rule — add 4 to Selvi's age. Same as x + 4.\nend  # The rule is finished.",
+  "purpose": "Your rule is written as code below. Read what each part means, then try it with any age.",
+  "codeExplanation": [
+    {
+      "code": "fun thamarai-age(selvi-age):",
+      "explanation": "This defines a rule called 'thamarai-age'. It takes Selvi's age as the input."
+    },
+    {
+      "code": "selvi-age + 4",
+      "explanation": "This is your rule — add 4 to Selvi's age to get Thamarai's age. Same as x + 4."
+    },
+    {
+      "code": "end",
+      "explanation": "This tells the computer the rule is finished."
     }
+  ],
+  "simulation": {
+    "inputLabel": "Selvi's age",
+    "outputLabel": "Thamarai's age",
+    "expression": "x + 4",
+    "variables": ["x"]
   },
+  "pyretSteps": [
+    {
+      "id": "p1",
+      "type": "match",
+      "title": "Step 1: Read the code",
+      "prompt": "Match each part of the code to what it means in math.",
+      "items": [
+        { "code": "thamarai-age", "match": "The name of the rule" },
+        { "code": "selvi-age", "match": "The input — x" },
+        { "code": "+ 4", "match": "The constant — always added" }
+      ]
+    },
+    {
+      "id": "p2",
+      "type": "predict",
+      "title": "Step 2: Predict before running",
+      "prompt": "Before you run the code — if Selvi is 9 years old, what will the function return?",
+      "inputLabel": "Your prediction",
+      "validation": {
+        "type": "exact",
+        "answer": 13,
+        "successMessage": "Correct! 9 + 4 = 13. Now run the code to confirm.",
+        "hintMessage": "Use the rule you found: x + 4. What is 9 + 4?"
+      }
+    },
+    {
+  "id": "p3",
+  "type": "run",
+  "title": "Step 3: Run and verify",
+  "prompt": "Click Run in the code editor. Then type thamarai-age(9) in the >>> box and press Enter.",
+  "confirmPrompt": "Did the function return {answer}?",
+  "expectedAnswer": 13,
+  "options": ["Yes", "No"],
+  "validation": {
+    "type": "exact",
+    "answer": "Yes",
+    "successMessage": "The code and your prediction match. Now test values in the LCD.",
+    "hintMessage": "Make sure you clicked Run first, then typed thamarai-age(9) in the >>> box."
+  }
+},
+    {
+      "id": "p4",
+      "type": "newrule",
+      "title": "Step 4: Change the rule",
+      "prompt": "The operation stays the same — just change the number. How many years older should the sibling be?",
+      "inputLabel": "Years older",
+      "hint": "Pick any number other than 4.",
+      "validation": {
+        "type": "nonzero",
+        "excludeValue": 4,
+        "hintMessage": "Try a different number — not 4, since that is the original rule."
+      }
+    },
+    {
+  "id": "p5",
+  "type": "identify",
+  "title": "Step 5: Identify the line to change",
+  "prompt": "Look at the Pyret code above. Which line number contains the rule that needs to change?",
+  "options": ["Line 1", "Line 2", "Line 3"],
+  "validation": {
+    "type": "exact",
+    "answer": "Line 2",
+    "successMessage": "Correct — Line 2 contains your rule.",
+    "hintMessage": "Think back to Step 1. Which part did you match to 'The constant — always added'?"
+  }
+},
+    {
+      "id": "p6",
+      "type": "confirm",
+      "title": "Step 6: Update the code",
+      "promptTemplate": "Find the line selvi-age + 4 in the Pyret editor above. Change 4 to {number}. Click Run to test it. Then click confirm below.",
+      "confirmLabel": "I have updated the code and clicked Run"
+    },
+    {
+      "id": "p7",
+      "type": "story",
+      "title": "Step 7: Write your story",
+      "prompt": "You changed the rule. Now write a sentence in your own words describing the new relationship. Use a specific age for Selvi.",
+      "placeholder": "e.g. If Selvi is 9 years old, her sibling is 15 because the rule is now x + 6...",
+      "validation": {
+        "type": "ai",
+        "concept": "The student should describe a relationship where the sibling is older than Selvi by the number they chose. The numbers should be consistent with the new rule x + [their number]. The story should use a specific input value and the correct output.",
+        "successMessage": "Well written. Your story correctly reflects the new rule.",
+        "hintMessage": "Make sure your story includes Selvi's age, the sibling's age, and explains why the difference is the number you chose."
+      }
+    }
+  ]
+},
   "check": {
     "questions": [
       {
