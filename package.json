@@ -15,6 +15,7 @@
   "dependencies": {
     "@ironm00n/pyret-embed": "^0.0.1",
     "firebase": "^12.10.0",
+    "mathjs": "^15.1.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   }

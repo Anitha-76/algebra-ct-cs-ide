@@ -1,6 +1,23 @@
 import { useEffect, useRef, useState } from 'react'
-import { makeEmbed } from '@ironm00n/pyret-embed/api'
+import { create, all } from 'mathjs'
 import { validateAI } from '../utils/validateAI'
+
+const math = create(all)
+
+// ─── Safe evaluator ───────────────────────────────────────────────────────────
+
+function evaluateExpression(constant, inputVal) {
+  try {
+    const x = parseFloat(inputVal)
+    const c = parseFloat(constant)
+    if (isNaN(x) || isNaN(c)) return null
+    return math.evaluate(`x + c`, { x, c })
+  } catch {
+    return null
+  }
+}
+
+// ─── Mini Graph ───────────────────────────────────────────────────────────────
 
 function MiniGraph({ originalPoints, newRulePoints, originalExpression, newExpression }) {
   const canvasRef = useRef(null)
@@ -14,6 +31,7 @@ function MiniGraph({ originalPoints, newRulePoints, originalExpression, newExpre
     const pad = 40
 
     const allPoints = [...originalPoints, ...newRulePoints]
+    if (allPoints.length === 0) return
     const allX = allPoints.map(p => p.x)
     const allY = allPoints.map(p => p.y)
     const minX = Math.min(0, ...allX)
@@ -30,7 +48,6 @@ function MiniGraph({ originalPoints, newRulePoints, originalExpression, newExpre
       ]
     }
 
-    // axes
     ctx.strokeStyle = '#d1d5db'
     ctx.lineWidth = 1
     ctx.beginPath()
@@ -41,7 +58,6 @@ function MiniGraph({ originalPoints, newRulePoints, originalExpression, newExpre
     ctx.moveTo(ax0, ay0); ctx.lineTo(ax0, ay1)
     ctx.stroke()
 
-    // axis labels
     ctx.fillStyle = '#9ca3af'
     ctx.font = '10px sans-serif'
     ctx.textAlign = 'center'
@@ -52,27 +68,21 @@ function MiniGraph({ originalPoints, newRulePoints, originalExpression, newExpre
     ctx.fillText("Thamarai's age", 0, 0)
     ctx.restore()
 
-    // x axis tick labels
-    ctx.fillStyle = '#9ca3af'
-    ctx.font = '9px sans-serif'
-    ctx.textAlign = 'center'
     for (let x = 0; x <= maxX; x += 5) {
       const [cx, cy] = toCanvas(x, minY)
+      ctx.fillStyle = '#9ca3af'
+      ctx.font = '9px sans-serif'
+      ctx.textAlign = 'center'
       ctx.fillText(x, cx, cy + 12)
     }
 
     function drawPointSet(points, dotColor, lineColor) {
       if (points.length === 0) return
-
-      // sort by x for line drawing
       const sorted = [...points].sort((a, b) => a.x - b.x)
-
-      // draw connecting line only after 3 points
-      if (points.length >= 3) {
+      if (points.length >= 2) {
         ctx.strokeStyle = lineColor
-ctx.lineWidth = 2
-ctx.globalAlpha = 0.45
-ctx.setLineDash([])
+        ctx.lineWidth = 2
+        ctx.globalAlpha = 0.45
         ctx.beginPath()
         sorted.forEach(({ x, y }, i) => {
           const [cx, cy] = toCanvas(x, y)
@@ -80,10 +90,8 @@ ctx.setLineDash([])
           else ctx.lineTo(cx, cy)
         })
         ctx.stroke()
-ctx.globalAlpha = 1
+        ctx.globalAlpha = 1
       }
-
-      // draw dots and labels
       points.forEach(({ x, y }) => {
         const [cx, cy] = toCanvas(x, y)
         ctx.beginPath()
@@ -99,7 +107,6 @@ ctx.globalAlpha = 1
 
     drawPointSet(originalPoints, '#ef4444', '#fca5a5')
     drawPointSet(newRulePoints, '#3b82f6', '#93c5fd')
-
   }, [originalPoints, newRulePoints])
 
   const showLegend = originalPoints.length > 0 || newRulePoints.length > 0
@@ -122,16 +129,6 @@ ctx.globalAlpha = 1
           )}
         </div>
       )}
-      {originalPoints.length > 0 && originalPoints.length < 3 && (
-        <p style={{ fontSize: '11px', color: '#f97316', margin: '0 0 4px' }}>
-          Plot {3 - originalPoints.length} more point{3 - originalPoints.length > 1 ? 's' : ''} to see the line for the original rule.
-        </p>
-      )}
-      {newRulePoints.length > 0 && newRulePoints.length < 3 && (
-        <p style={{ fontSize: '11px', color: '#f97316', margin: '0 0 4px' }}>
-          Plot {3 - newRulePoints.length} more point{3 - newRulePoints.length > 1 ? 's' : ''} to see the line for your new rule.
-        </p>
-      )}
       <canvas
         ref={canvasRef}
         width={240}
@@ -142,25 +139,37 @@ ctx.globalAlpha = 1
   )
 }
 
-function ArduinoLCD({ simulation, expression, onTest, originalPoints, newRulePoints, showGraph, originalExpression, newExpression, lcdInput, setLcdInput, lcdOutput, setLcdOutput }) {
+// ─── LCD Panel ────────────────────────────────────────────────────────────────
+// No Run button. LCD updates instantly when student types an age.
+// Each unique value typed is added as a point to the graph.
 
-  function evaluate(val) {
-    try {
-      const x = parseFloat(val)
-      if (isNaN(x)) return null
-      // eslint-disable-next-line no-new-func
-      return Function('x', `return ${expression}`)(x)
-    } catch {
-      return null
-    }
-  }
+function ArduinoLCD({
+  simulation, activeConstant,
+  originalPoints, setOriginalPoints,
+  newRulePoints, setNewRulePoints,
+  showGraph, isNewRule,
+  originalExpression, newExpression,
+  lcdInput, setLcdInput
+}) {
+  const result = evaluateExpression(activeConstant, lcdInput)
 
-  function handleRun() {
-    const val = parseFloat(lcdInput)
-    const result = evaluate(val)
-    if (result !== null) {
-      setLcdOutput(result)
-      if (onTest) onTest(val, result)
+  function handleInputChange(e) {
+    const val = e.target.value
+    setLcdInput(val)
+    const computed = evaluateExpression(activeConstant, val)
+    if (computed !== null && val !== '') {
+      const point = { x: parseFloat(val), y: computed }
+      if (isNewRule) {
+        setNewRulePoints(prev => {
+          const exists = prev.some(p => p.x === point.x)
+          return exists ? prev : [...prev, point]
+        })
+      } else {
+        setOriginalPoints(prev => {
+          const exists = prev.some(p => p.x === point.x)
+          return exists ? prev : [...prev, point]
+        })
+      }
     }
   }
 
@@ -169,18 +178,22 @@ function ArduinoLCD({ simulation, expression, onTest, originalPoints, newRulePoi
       <div className="arduino-lcd-label">⚡ Simulated Output</div>
       <div className="arduino-lcd-screen">
         <div className="lcd-line">{simulation.inputLabel}: {lcdInput || '--'}</div>
-        <div className="lcd-line">{simulation.outputLabel}: {lcdOutput !== null ? lcdOutput : '--'}</div>
+        <div className="lcd-line">
+          {simulation.outputLabel}: {result !== null && lcdInput !== '' ? result : '--'}
+        </div>
       </div>
       <div className="arduino-lcd-controls">
         <input
           type="number"
           value={lcdInput}
-          onChange={e => setLcdInput(e.target.value)}
-          placeholder="Enter age"
+          onChange={handleInputChange}
+          placeholder="Type Selvi's age"
           className="arduino-lcd-input"
         />
-        <button onClick={handleRun} className="arduino-lcd-btn">Run ↗</button>
       </div>
+      <p style={{ fontSize: '11px', color: '#6b7280', marginTop: '6px' }}>
+        Type any age — the output updates instantly.
+      </p>
       {showGraph && (
         <MiniGraph
           originalPoints={originalPoints}
@@ -193,9 +206,105 @@ function ArduinoLCD({ simulation, expression, onTest, originalPoints, newRulePoi
   )
 }
 
+// ─── Annotated Code Block ─────────────────────────────────────────────────────
+// Shows Pyret-style code with line numbers.
+// Line 2 has an editable blank. locked=true freezes the blank.
+
+function AnnotatedCodeBlock({ codeLines, fillinValue, setFillinValue, locked }) {
+  return (
+    <div style={{
+      background: '#1e1e2e',
+      borderRadius: '8px',
+      padding: '16px',
+      fontFamily: 'monospace',
+      fontSize: '13px',
+      lineHeight: '2.2',
+      marginBottom: '12px'
+    }}>
+      {codeLines.map((line, i) => (
+        <div
+          key={i}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            padding: '2px 8px',
+            borderRadius: '4px'
+          }}
+        >
+          <span style={{
+            color: '#4b5563',
+            fontSize: '11px',
+            minWidth: '16px',
+            textAlign: 'right',
+            userSelect: 'none'
+          }}>
+            {i + 1}
+          </span>
+
+          <span style={{ color: '#e2e8f0', flex: 1, display: 'flex', alignItems: 'center', gap: '4px' }}>
+            {line.hasFillin ? (
+              <>
+                <span style={{ color: '#f8f8f2' }}>{line.prefix}</span>
+                {locked ? (
+                  <span style={{
+                    color: '#22c55e',
+                    background: 'rgba(34,197,94,0.1)',
+                    padding: '0 6px',
+                    borderRadius: '4px',
+                    border: '1px solid rgba(34,197,94,0.3)',
+                    minWidth: '24px',
+                    textAlign: 'center'
+                  }}>
+                    {fillinValue}
+                  </span>
+                ) : (
+                  <input
+                    type="text"
+                    value={fillinValue}
+                    onChange={e => setFillinValue(e.target.value)}
+                    placeholder="?"
+                    style={{
+                      width: '48px',
+                      background: 'rgba(255,255,255,0.08)',
+                      border: '1px dashed #6366f1',
+                      borderRadius: '4px',
+                      color: '#818cf8',
+                      fontFamily: 'monospace',
+                      fontSize: '13px',
+                      padding: '1px 6px',
+                      outline: 'none',
+                      textAlign: 'center'
+                    }}
+                  />
+                )}
+                <span style={{ color: '#f8f8f2' }}>{line.suffix || ''}</span>
+              </>
+            ) : (
+              <span style={{ color: line.color || '#f8f8f2' }}>{line.code}</span>
+            )}
+          </span>
+
+          {line.annotation && (
+            <span style={{
+              fontSize: '11px',
+              color: '#4b5563',
+              fontFamily: 'sans-serif',
+              fontStyle: 'italic',
+              whiteSpace: 'nowrap'
+            }}>
+              ← {line.annotation}
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ─── Main PyretTab ────────────────────────────────────────────────────────────
+
 function PyretTab({ pyret, progress, onUpdateProgress }) {
-  const embedRef = useRef(null)
-  const containerRef = useRef(null)
   const [currentStep, setCurrentStep] = useState(0)
 
   const [matchAnswers, setMatchAnswers] = useState({})
@@ -203,8 +312,12 @@ function PyretTab({ pyret, progress, onUpdateProgress }) {
   const [predictValue, setPredictValue] = useState('')
   const [predictFeedback, setPredictFeedback] = useState(null)
 
-  const [runAnswer, setRunAnswer] = useState(null)
+  const [fillinValue, setFillinValue] = useState('')
+  const [fillinFeedback, setFillinFeedback] = useState(null)
+  const [fillinDone, setFillinDone] = useState(false)
+  const [fillinLocked, setFillinLocked] = useState(false)
   const [lcdVisible, setLcdVisible] = useState(false)
+  const [showGraph, setShowGraph] = useState(false)
 
   const [newConstant, setNewConstant] = useState('')
   const [newConstantFeedback, setNewConstantFeedback] = useState(null)
@@ -219,28 +332,35 @@ function PyretTab({ pyret, progress, onUpdateProgress }) {
 
   const [originalPoints, setOriginalPoints] = useState([])
   const [newRulePoints, setNewRulePoints] = useState([])
-  const [showGraph, setShowGraph] = useState(false)
-  const [postRuleTests, setPostRuleTests] = useState(0)
   const [lcdInput, setLcdInput] = useState('')
-  const [lcdOutput, setLcdOutput] = useState(null)
+  const [lcdUnlocked, setLcdUnlocked] = useState(false)
 
-  const steps = pyret.pyretSteps
-  const currentExpression = newExpression || pyret.simulation.expression
-  const originalExpression = pyret.simulation.expression
+  const steps = pyret?.pyretSteps || []
+  const codeExplanation = pyret?.codeExplanation || []
+  const originalExpression = pyret?.simulation?.expression || 'x + 4'
 
-  useEffect(() => {
-    if (currentStep === 2 && !embedRef.current && containerRef.current) {
-      makeEmbed('pyret-1', containerRef.current).then(embed => {
-        embedRef.current = embed
-        embed.sendReset({
-          editorContents: pyret.starterCode,
-          replContents: '',
-          definitionsAtLastRun: '',
-          interactionsSinceLastRun: []
-        })
-      })
+  const activeConstant = lcdUnlocked && newConstant ? newConstant : '4'
+  const currentExpression = lcdUnlocked && newExpression ? newExpression : originalExpression
+  const isNewRule = lcdUnlocked && !!newExpression
+
+  const codeLines = [
+    {
+      code: 'fun thamarai-age(selvi-age):',
+      color: '#c084fc',
+      annotation: codeExplanation[0]?.explanation || 'defines the rule and its input'
+    },
+    {
+      hasFillin: true,
+      prefix: '  selvi-age + ',
+      suffix: '',
+      annotation: codeExplanation[1]?.explanation || 'your rule — add to get Thamarai\'s age'
+    },
+    {
+      code: 'end',
+      color: '#c084fc',
+      annotation: codeExplanation[2]?.explanation || 'the rule is finished'
     }
-  }, [currentStep])
+  ]
 
   function handleMatchSubmit() {
     const step = steps[0]
@@ -263,30 +383,39 @@ function PyretTab({ pyret, progress, onUpdateProgress }) {
     }
   }
 
-  function handleRunAnswer(answer) {
-  const step = steps[2]
-  setRunAnswer(answer)
-  if (answer === step.validation.answer) {
+  function handleFillinRun() {
+    const step = steps[2]
+    const expected = step?.expectedConstant ?? 4
+    const entered = parseFloat(fillinValue)
+
+    if (isNaN(entered)) {
+      setFillinFeedback({ type: 'hint', message: step?.validation?.hintMessage || 'Type a number.' })
+      return
+    }
+    if (entered !== expected) {
+      setFillinFeedback({ type: 'hint', message: step?.validation?.hintMessage || 'Check your table.' })
+      return
+    }
+
+    setFillinFeedback({ type: 'success', message: step?.validation?.successMessage || 'Correct!' })
+    setFillinDone(true)
+    setFillinLocked(true)
     setLcdVisible(true)
     setShowGraph(true)
     setCurrentStep(3)
-  } else {
-    setRunAnswer(null)
-    alert(step.validation.hintMessage)
   }
-}
 
   function handleNewConstantSubmit() {
     const step = steps[3]
     const val = parseFloat(newConstant)
-    if (isNaN(val) || val === step.validation.excludeValue || val === 0) {
-      setNewConstantFeedback({ type: 'hint', message: step.validation.hintMessage })
+    if (isNaN(val) || val === step?.validation?.excludeValue || val === 0) {
+      setNewConstantFeedback({ type: 'hint', message: step?.validation?.hintMessage || 'Try a different number.' })
     } else {
       setNewExpression(`x + ${val}`)
       setNewRulePoints([])
-      setPostRuleTests(0)
       setLcdInput('')
-      setLcdOutput(null)
+      setFillinValue(String(val))
+      setFillinLocked(false)
       setNewConstantFeedback({ type: 'success', message: `New rule set: x + ${val}` })
       setCurrentStep(4)
     }
@@ -295,26 +424,18 @@ function PyretTab({ pyret, progress, onUpdateProgress }) {
   function handleIdentifyAnswer(answer) {
     const step = steps[4]
     setIdentifyAnswer(answer)
-    if (answer === step.validation.answer) {
+    if (answer === step?.validation?.answer) {
       setIdentifyFeedback({ type: 'success', message: step.validation.successMessage })
       setCurrentStep(5)
     } else {
-      setIdentifyFeedback({ type: 'hint', message: step.validation.hintMessage })
+      setIdentifyFeedback({ type: 'hint', message: step?.validation?.hintMessage })
     }
   }
 
   function handleConfirm() {
+    setLcdUnlocked(true)
+    setFillinLocked(true)
     setCurrentStep(6)
-  }
-
-  function handleLCDTest(x, y) {
-    if (newExpression && currentStep >= 6) {
-      const updated = [...newRulePoints, { x, y }]
-      setNewRulePoints(updated)
-      setPostRuleTests(prev => prev + 1)
-    } else {
-      setOriginalPoints(prev => [...prev, { x, y }])
-    }
   }
 
   async function handleStorySubmit() {
@@ -324,10 +445,7 @@ function PyretTab({ pyret, progress, onUpdateProgress }) {
       {
         prompt: step.prompt,
         attemptCount: 0,
-        validation: {
-          type: 'open-ended',
-          concept: step.validation.concept
-        }
+        validation: { type: 'open-ended', concept: step.validation.concept }
       },
       storyText
     )
@@ -340,14 +458,11 @@ function PyretTab({ pyret, progress, onUpdateProgress }) {
     }
   }
 
-  const confirmPromptText = steps[5]?.promptTemplate?.replace(
-    '{number}',
-    newConstant || '?'
-  )
+  const confirmPromptText = steps[5]?.promptTemplate?.replace('{number}', newConstant || '?')
 
   return (
     <div className="panel" role="tabpanel" id="panel-pyret">
-      {pyret.purpose && (
+      {pyret?.purpose && (
         <div className="pyret-purpose">
           <p>{pyret.purpose}</p>
         </div>
@@ -358,11 +473,11 @@ function PyretTab({ pyret, progress, onUpdateProgress }) {
 
           {/* Step 1 — Match */}
           <div className="pyret-step">
-            <h3>{steps[0].title}</h3>
-            <p>{steps[0].prompt}</p>
+            <h3>{steps[0]?.title}</h3>
+            <p>{steps[0]?.prompt}</p>
             <table className="match-table">
               <tbody>
-                {steps[0].items.map(item => (
+                {steps[0]?.items?.map(item => (
                   <tr key={item.code}>
                     <td><code>{item.code}</code></td>
                     <td>
@@ -390,8 +505,8 @@ function PyretTab({ pyret, progress, onUpdateProgress }) {
           {/* Step 2 — Predict */}
           {currentStep >= 1 && (
             <div className="pyret-step">
-              <h3>{steps[1].title}</h3>
-              <p>{steps[1].prompt}</p>
+              <h3>{steps[1]?.title}</h3>
+              <p>{steps[1]?.prompt}</p>
               <input
                 type="number"
                 value={predictValue}
@@ -410,55 +525,59 @@ function PyretTab({ pyret, progress, onUpdateProgress }) {
             </div>
           )}
 
-          {/* Step 3 — Run and verify */}
+          {/* Step 3 — Fill in the rule */}
           {currentStep >= 2 && (
             <div className="pyret-step">
-              <h3>{steps[2].title}</h3>
-              <p>{steps[2].prompt}</p>
-              <div className="pyret-embed-section">
-                <div ref={containerRef} className="pyret" />
-              </div>
-              {currentStep === 2 && (
-  <>
-    <p style={{ marginTop: '12px' }}>
-      {steps[2].confirmPrompt.replace('{answer}', steps[2].expectedAnswer)}
-    </p>
-    <div className="pyret-radio-group">
-      {steps[2].options.map(opt => (
-        <button
-          key={opt}
-          className={`pyret-option-btn ${runAnswer === opt ? 'selected' : ''}`}
-          onClick={() => handleRunAnswer(opt)}
-        >
-          {opt}
-        </button>
-      ))}
-    </div>
-  </>
-)}
-{currentStep > 2 && (
-  <p className="feedback-success">✓ Function verified — test values in the LCD on the right.</p>
-)}
+              <h3>{steps[2]?.title}</h3>
+              <p>{steps[2]?.prompt}</p>
+
+              <AnnotatedCodeBlock
+                codeLines={codeLines}
+                fillinValue={fillinValue}
+                setFillinValue={setFillinValue}
+                locked={fillinLocked}
+              />
+
+              {!fillinDone && (
+                <>
+                  <p style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
+                    Type the missing number in the blank, then confirm.
+                  </p>
+                  <button className="pyret-btn" onClick={handleFillinRun}>
+                    Confirm rule ↗
+                  </button>
+                </>
+              )}
+
+              {fillinFeedback && (
+                <p className={fillinFeedback.type === 'success' ? 'feedback-success' : 'feedback-hint'}>
+                  {fillinFeedback.message}
+                </p>
+              )}
+
+              {currentStep > 2 && (
+                <p className="feedback-success">✓ Rule confirmed. Type ages in the LCD to test it.</p>
+              )}
             </div>
           )}
 
-          {/* Step 4 — New rule constant */}
+          {/* Step 4 — Change the rule */}
           {currentStep >= 3 && (
             <div className="pyret-step">
-              <h3>{steps[3].title}</h3>
-              <p>{steps[3].prompt}</p>
+              <h3>{steps[3]?.title}</h3>
+              <p>{steps[3]?.prompt}</p>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '14px' }}>x +</span>
                 <input
                   type="number"
                   value={newConstant}
                   onChange={e => setNewConstant(e.target.value)}
-                  placeholder={steps[3].inputLabel}
+                  placeholder={steps[3]?.inputLabel}
                   disabled={currentStep > 3}
                   style={{ width: '80px' }}
                 />
               </div>
-              <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>{steps[3].hint}</p>
+              <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>{steps[3]?.hint}</p>
               {currentStep === 3 && (
                 <button className="pyret-btn" onClick={handleNewConstantSubmit}>Set new rule</button>
               )}
@@ -470,13 +589,13 @@ function PyretTab({ pyret, progress, onUpdateProgress }) {
             </div>
           )}
 
-          {/* Step 5 — Identify the line */}
+          {/* Step 5 — Which line changed */}
           {currentStep >= 4 && (
             <div className="pyret-step">
-              <h3>{steps[4].title}</h3>
-              <p>{steps[4].prompt}</p>
+              <h3>{steps[4]?.title}</h3>
+              <p>{steps[4]?.prompt}</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
-                {steps[4].options.map(opt => (
+                {steps[4]?.options?.map(opt => (
                   <button
                     key={opt}
                     className={`pyret-option-btn ${identifyAnswer === opt ? 'selected' : ''}`}
@@ -496,14 +615,14 @@ function PyretTab({ pyret, progress, onUpdateProgress }) {
             </div>
           )}
 
-          {/* Step 6 — Confirm code update */}
+          {/* Step 6 — Confirm */}
           {currentStep >= 5 && (
             <div className="pyret-step">
-              <h3>{steps[5].title}</h3>
+              <h3>{steps[5]?.title}</h3>
               <p>{confirmPromptText}</p>
               {currentStep === 5 && (
                 <button className="pyret-btn" onClick={handleConfirm}>
-                  {steps[5].confirmLabel}
+                  {steps[5]?.confirmLabel}
                 </button>
               )}
               {currentStep > 5 && (
@@ -511,7 +630,7 @@ function PyretTab({ pyret, progress, onUpdateProgress }) {
                   <p className="feedback-success">✓ Code updated</p>
                   <div style={{ marginTop: '12px', padding: '10px 14px', background: '#eff6ff', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
                     <p style={{ margin: 0, fontSize: '14px', color: '#1d4ed8' }}>
-                      Try your new rule in the LCD on the right — test a few values to see how the graph changes.
+                      Try your new rule in the LCD — type different ages and watch the output change.
                     </p>
                   </div>
                 </>
@@ -520,14 +639,14 @@ function PyretTab({ pyret, progress, onUpdateProgress }) {
           )}
 
           {/* Step 7 — Story */}
-          {currentStep >= 6 && postRuleTests >= 1 && (
+          {currentStep >= 6 && newRulePoints.length >= 1 && (
             <div className="pyret-step">
-              <h3>{steps[6].title}</h3>
-              <p>{steps[6].prompt}</p>
+              <h3>{steps[6]?.title}</h3>
+              <p>{steps[6]?.prompt}</p>
               <textarea
                 value={storyText}
                 onChange={e => setStoryText(e.target.value)}
-                placeholder={steps[6].placeholder}
+                placeholder={steps[6]?.placeholder}
                 rows={4}
                 disabled={storyFeedback?.type === 'success'}
               />
@@ -546,35 +665,23 @@ function PyretTab({ pyret, progress, onUpdateProgress }) {
 
         </div>
 
-        {/* Right: LCD + graph */}
+        {/* Right panel — LCD */}
         <div className="pyret-right">
           {lcdVisible && (
-            <>
-              <ArduinoLCD
-                simulation={pyret.simulation}
-                expression={currentExpression}
-                onTest={handleLCDTest}
-                originalPoints={originalPoints}
-                newRulePoints={newRulePoints}
-                showGraph={showGraph}
-                originalExpression={originalExpression}
-                newExpression={newExpression}
-                lcdInput={lcdInput}
-                setLcdInput={setLcdInput}
-                lcdOutput={lcdOutput}
-                setLcdOutput={setLcdOutput}
-              />
-              {!newExpression && (
-                <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '10px', lineHeight: '1.5' }}>
-                  Testing the original rule. Complete Step 4 to set a new rule.
-                </p>
-              )}
-              {newExpression && (
-                <p style={{ fontSize: '12px', color: '#16a34a', marginTop: '10px', lineHeight: '1.5' }}>
-                  LCD updated — now using: {newExpression}
-                </p>
-              )}
-            </>
+            <ArduinoLCD
+              simulation={pyret.simulation}
+              activeConstant={activeConstant}
+              originalPoints={originalPoints}
+              setOriginalPoints={setOriginalPoints}
+              newRulePoints={newRulePoints}
+              setNewRulePoints={setNewRulePoints}
+              showGraph={showGraph}
+              isNewRule={isNewRule}
+              originalExpression={originalExpression}
+              newExpression={newExpression}
+              lcdInput={lcdInput}
+              setLcdInput={setLcdInput}
+            />
           )}
         </div>
 
