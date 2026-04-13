@@ -1,690 +1,424 @@
-import { useEffect, useRef, useState } from 'react'
-import { create, all } from 'mathjs'
-import { validateAI } from '../utils/validateAI'
+import { useState } from 'react'
 
-const math = create(all)
-
-// ─── Safe evaluator ───────────────────────────────────────────────────────────
-
-function evaluateExpression(constant, inputVal) {
-  try {
-    const x = parseFloat(inputVal)
-    const c = parseFloat(constant)
-    if (isNaN(x) || isNaN(c)) return null
-    return math.evaluate(`x + c`, { x, c })
-  } catch {
-    return null
-  }
+// ─── Design tokens ────────────────────────────────────────────────────────────
+const C = {
+  pageBg:      '#f5f3ff',
+  cardBg:      '#faf9ff',
+  cardBorder:  '#c4b5fd',
+  accent:      '#7c3aed',
+  accentLight: '#ede9fe',
+  accentDark:  '#4c1d95',
+  pillBg:      '#ddd6fe',
+  pillText:    '#4c1d95',
+  promptText:  '#3b0764',
+  mutedText:   '#6d28d9',
+  successBg:   '#d1fae5',
+  successBdr:  '#6ee7b7',
+  successText: '#065f46',
+  errorBg:     '#fee2e2',
+  errorBdr:    '#fca5a5',
+  doneBg:      '#ede9fe',
+  doneText:    '#5b21b6',
+  codeBg:      '#1e1e2e',
 }
 
-// ─── Mini Graph ───────────────────────────────────────────────────────────────
+const F = {
+  pill:    '11px',
+  meta:    '14px',
+  body:    '17px',
+  heading: '20px',
+  code:    '15px',
+}
 
-function MiniGraph({ originalPoints, newRulePoints, originalExpression, newExpression }) {
-  const canvasRef = useRef(null)
+const btnStyle = {
+  padding: '10px 22px', background: C.accent, color: '#fff',
+  border: 'none', borderRadius: '10px', fontSize: '15px',
+  fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit',
+}
 
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    const w = canvas.width
-    const h = canvas.height
-    const pad = 40
-
-    const allPoints = [...originalPoints, ...newRulePoints]
-    if (allPoints.length === 0) return
-    const allX = allPoints.map(p => p.x)
-    const allY = allPoints.map(p => p.y)
-    const minX = Math.min(0, ...allX)
-    const maxX = Math.max(20, ...allX)
-    const minY = Math.min(0, ...allY)
-    const maxY = Math.max(20, ...allY)
-
-    ctx.clearRect(0, 0, w, h)
-
-    function toCanvas(x, y) {
-      return [
-        pad + ((x - minX) / (maxX - minX)) * (w - 2 * pad),
-        h - pad - ((y - minY) / (maxY - minY)) * (h - 2 * pad)
-      ]
-    }
-
-    ctx.strokeStyle = '#d1d5db'
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    const [ax0, ay0] = toCanvas(minX, minY)
-    const [ax1] = toCanvas(maxX, minY)
-    const [, ay1] = toCanvas(minX, maxY)
-    ctx.moveTo(ax0, ay0); ctx.lineTo(ax1, ay0)
-    ctx.moveTo(ax0, ay0); ctx.lineTo(ax0, ay1)
-    ctx.stroke()
-
-    ctx.fillStyle = '#9ca3af'
-    ctx.font = '10px sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText("Selvi's age", w / 2, h - 6)
-    ctx.save()
-    ctx.translate(12, h / 2)
-    ctx.rotate(-Math.PI / 2)
-    ctx.fillText("Thamarai's age", 0, 0)
-    ctx.restore()
-
-    for (let x = 0; x <= maxX; x += 5) {
-      const [cx, cy] = toCanvas(x, minY)
-      ctx.fillStyle = '#9ca3af'
-      ctx.font = '9px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.fillText(x, cx, cy + 12)
-    }
-
-    function drawPointSet(points, dotColor, lineColor) {
-      if (points.length === 0) return
-      const sorted = [...points].sort((a, b) => a.x - b.x)
-      if (points.length >= 2) {
-        ctx.strokeStyle = lineColor
-        ctx.lineWidth = 2
-        ctx.globalAlpha = 0.45
-        ctx.beginPath()
-        sorted.forEach(({ x, y }, i) => {
-          const [cx, cy] = toCanvas(x, y)
-          if (i === 0) ctx.moveTo(cx, cy)
-          else ctx.lineTo(cx, cy)
-        })
-        ctx.stroke()
-        ctx.globalAlpha = 1
-      }
-      points.forEach(({ x, y }) => {
-        const [cx, cy] = toCanvas(x, y)
-        ctx.beginPath()
-        ctx.arc(cx, cy, 5, 0, 2 * Math.PI)
-        ctx.fillStyle = dotColor
-        ctx.fill()
-        ctx.fillStyle = '#374151'
-        ctx.font = '9px sans-serif'
-        ctx.textAlign = 'left'
-        ctx.fillText(`(${x},${y})`, cx + 7, cy - 4)
-      })
-    }
-
-    drawPointSet(originalPoints, '#ef4444', '#fca5a5')
-    drawPointSet(newRulePoints, '#3b82f6', '#93c5fd')
-  }, [originalPoints, newRulePoints])
-
-  const showLegend = originalPoints.length > 0 || newRulePoints.length > 0
-
+// ─── Watermark ────────────────────────────────────────────────────────────────
+function WatermarkLayer() {
   return (
-    <div style={{ marginTop: '12px' }}>
-      {showLegend && (
-        <div style={{ display: 'flex', gap: '12px', marginBottom: '6px', fontSize: '11px', color: '#6b7280' }}>
-          {originalPoints.length > 0 && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ef4444', display: 'inline-block' }} />
-              {originalExpression}
-            </span>
-          )}
-          {newRulePoints.length > 0 && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#3b82f6', display: 'inline-block' }} />
-              {newExpression}
-            </span>
-          )}
-        </div>
-      )}
-      <canvas
-        ref={canvasRef}
-        width={240}
-        height={200}
-        style={{ border: '1px solid #e5e7eb', borderRadius: '6px', display: 'block' }}
-      />
-    </div>
+    <svg aria-hidden="true" style={{
+      position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+      pointerEvents: 'none', zIndex: 0, opacity: 0.07,
+    }}>
+      <defs>
+        <pattern id="wm-pyret" x="0" y="0" width="520" height="520" patternUnits="userSpaceOnUse">
+          <text x="30"  y="80"  fontSize="52" fill="#7c3aed" fontFamily="Georgia,serif">x</text>
+          <text x="120" y="60"  fontSize="38" fill="#6d28d9" fontFamily="Georgia,serif">+</text>
+          <text x="170" y="75"  fontSize="40" fill="#7c3aed" fontFamily="Georgia,serif">4</text>
+          <text x="240" y="55"  fontSize="28" fill="#4c1d95" fontFamily="Georgia,serif">=</text>
+          <text x="280" y="70"  fontSize="36" fill="#7c3aed" fontFamily="Georgia,serif">y</text>
+          <circle cx="80"  cy="160" r="28" fill="none" stroke="#7c3aed" strokeWidth="2"/>
+          <polygon points="300,100 330,150 270,150" fill="none" stroke="#7c3aed" strokeWidth="1.5"/>
+          <text x="10"  y="310" fontSize="42" fill="#6d28d9" fontFamily="Georgia,serif">&#945;</text>
+          <rect x="40"  y="350" width="40" height="40" rx="4" fill="none" stroke="#a5b4fc" strokeWidth="2"/>
+          <text x="20"  y="470" fontSize="34" fill="#7c3aed" fontFamily="Georgia,serif">f(x)</text>
+          <circle cx="380" cy="455" r="16" fill="none" stroke="#7c3aed" strokeWidth="2"/>
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#wm-pyret)"/>
+    </svg>
   )
 }
 
-// ─── LCD Panel ────────────────────────────────────────────────────────────────
-// No Run button. LCD updates instantly when student types an age.
-// Each unique value typed is added as a point to the graph.
-
-function ArduinoLCD({
-  simulation, activeConstant,
-  originalPoints, setOriginalPoints,
-  newRulePoints, setNewRulePoints,
-  showGraph, isNewRule,
-  originalExpression, newExpression,
-  lcdInput, setLcdInput
-}) {
-  const result = evaluateExpression(activeConstant, lcdInput)
-
-  function handleInputChange(e) {
-    const val = e.target.value
-    setLcdInput(val)
-    const computed = evaluateExpression(activeConstant, val)
-    if (computed !== null && val !== '') {
-      const point = { x: parseFloat(val), y: computed }
-      if (isNewRule) {
-        setNewRulePoints(prev => {
-          const exists = prev.some(p => p.x === point.x)
-          return exists ? prev : [...prev, point]
-        })
-      } else {
-        setOriginalPoints(prev => {
-          const exists = prev.some(p => p.x === point.x)
-          return exists ? prev : [...prev, point]
-        })
-      }
-    }
-  }
-
+// ─── Feedback ─────────────────────────────────────────────────────────────────
+function Msg({ type, children }) {
+  const ok = type === 'success'
   return (
-    <div className="arduino-lcd-panel">
-      <div className="arduino-lcd-label">⚡ Simulated Output</div>
-      <div className="arduino-lcd-screen">
-        <div className="lcd-line">{simulation.inputLabel}: {lcdInput || '--'}</div>
-        <div className="lcd-line">
-          {simulation.outputLabel}: {result !== null && lcdInput !== '' ? result : '--'}
-        </div>
-      </div>
-      <div className="arduino-lcd-controls">
-        <input
-          type="number"
-          value={lcdInput}
-          onChange={handleInputChange}
-          placeholder="Type Selvi's age"
-          className="arduino-lcd-input"
-        />
-      </div>
-      <p style={{ fontSize: '11px', color: '#6b7280', marginTop: '6px' }}>
-        Type any age — the output updates instantly.
-      </p>
-      {showGraph && (
-        <MiniGraph
-          originalPoints={originalPoints}
-          newRulePoints={newRulePoints}
-          originalExpression={originalExpression}
-          newExpression={newExpression}
-        />
-      )}
-    </div>
+    <p style={{
+      fontSize: F.body, padding: '10px 14px', borderRadius: '10px', marginTop: '10px',
+      color: ok ? C.successText : '#92400e',
+      background: ok ? C.successBg : '#fef3c7',
+      border: `0.5px solid ${ok ? C.successBdr : '#f59e0b'}`,
+      margin: '10px 0 0 0',
+    }}>{children}</p>
   )
 }
 
-// ─── Annotated Code Block ─────────────────────────────────────────────────────
-// Shows Pyret-style code with line numbers.
-// Line 2 has an editable blank. locked=true freezes the blank.
+// ─── Live code panel ──────────────────────────────────────────────────────────
+// Shows the function definition with both inputs updating live in line 2.
+// The function call below has two inline editable inputs.
+function LiveCodePanel({ ageVal, setAgeVal, yearsVal, setYearsVal, onRun, lastResult, runCount }) {
+  const ageDisplay   = ageVal   !== '' ? ageVal   : 'age'
+  const yearsDisplay = yearsVal !== '' ? yearsVal : 'years-older'
+  const canRun       = ageVal !== '' && yearsVal !== ''
+  const hasResult    = lastResult !== null
 
-function AnnotatedCodeBlock({ codeLines, fillinValue, setFillinValue, locked }) {
+  const inlineInput = (value, setValue, placeholder, width) => (
+    <input
+      type="number"
+      value={value}
+      onChange={e => setValue(e.target.value)}
+      onKeyDown={e => e.key === 'Enter' && canRun && onRun()}
+      placeholder={placeholder}
+      style={{
+        width,
+        background: 'rgba(255,255,255,0.08)',
+        border: `2px solid ${value !== '' ? '#22c55e' : '#6366f1'}`,
+        borderRadius: '6px',
+        color: value !== '' ? '#22c55e' : '#818cf8',
+        fontFamily: 'monospace', fontSize: F.code,
+        padding: '3px 8px', outline: 'none', textAlign: 'center',
+        transition: 'border-color 0.2s, color 0.2s',
+      }}
+    />
+  )
+
   return (
     <div style={{
-      background: '#1e1e2e',
-      borderRadius: '8px',
-      padding: '16px',
-      fontFamily: 'monospace',
-      fontSize: '13px',
-      lineHeight: '2.2',
-      marginBottom: '12px'
+      background: C.codeBg, borderRadius: '12px', padding: '22px',
+      fontFamily: 'monospace', fontSize: F.code, lineHeight: '2.8',
+      border: `2px solid ${C.accent}`,
+      boxShadow: '0 4px 20px rgba(124,58,237,0.2)',
     }}>
-      {codeLines.map((line, i) => (
-        <div
-          key={i}
+      {/* ── Function definition -- line 2 updates live ── */}
+      <div style={{
+        borderBottom: '1px solid #2d2d44',
+        paddingBottom: '14px', marginBottom: '14px'
+      }}>
+        {/* Line 1 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ color: '#4b5563', fontSize: '11px', minWidth: '18px', textAlign: 'right', userSelect: 'none' }}>1</span>
+          <span style={{ color: '#c084fc' }}>fun </span>
+          <span style={{ color: '#f8f8f2' }}>find-sibling-age(age, years-older):</span>
+          <span style={{ fontSize: '11px', color: '#4b5563', fontStyle: 'italic', fontFamily: 'sans-serif' }}>rule definition</span>
+        </div>
+        {/* Line 2 -- live update */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingLeft: '28px' }}>
+          <span style={{ color: '#4b5563', fontSize: '11px', minWidth: '18px', textAlign: 'right', userSelect: 'none' }}>2</span>
+          <span style={{
+            color: ageVal !== '' ? '#22c55e' : '#818cf8',
+            background: ageVal !== '' ? 'rgba(34,197,94,0.1)' : 'rgba(129,140,248,0.1)',
+            padding: '1px 6px', borderRadius: '4px', marginLeft: '8px',
+            transition: 'all 0.2s', minWidth: '40px', textAlign: 'center', display: 'inline-block'
+          }}>{ageDisplay}</span>
+          <span style={{ color: '#f8f8f2' }}> + </span>
+          <span style={{
+            color: yearsVal !== '' ? '#22c55e' : '#818cf8',
+            background: yearsVal !== '' ? 'rgba(34,197,94,0.1)' : 'rgba(129,140,248,0.1)',
+            padding: '1px 6px', borderRadius: '4px',
+            transition: 'all 0.2s', minWidth: '60px', textAlign: 'center', display: 'inline-block'
+          }}>{yearsDisplay}</span>
+          <span style={{ fontSize: '11px', color: '#4b5563', fontStyle: 'italic', fontFamily: 'sans-serif', marginLeft: '8px' }}>the rule</span>
+        </div>
+        {/* Line 3 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ color: '#4b5563', fontSize: '11px', minWidth: '18px', textAlign: 'right', userSelect: 'none' }}>3</span>
+          <span style={{ color: '#c084fc' }}>end</span>
+        </div>
+      </div>
+
+      {/* ── Function call ── */}
+      <div style={{ marginBottom: '6px', fontSize: '11px', color: '#6b7280', fontFamily: 'sans-serif', fontStyle: 'italic' }}>
+        call the function -- type both values, then press Run:
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+        <span style={{ color: '#c084fc' }}>find-sibling-age(</span>
+        {inlineInput(ageVal, setAgeVal, 'age', '72px')}
+        <span style={{ color: '#f8f8f2' }}>,</span>
+        {inlineInput(yearsVal, setYearsVal, 'older by', '88px')}
+        <span style={{ color: '#c084fc' }}>)</span>
+        <button
+          onClick={onRun}
+          disabled={!canRun}
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            padding: '2px 8px',
-            borderRadius: '4px'
+            marginLeft: '10px', padding: '5px 18px',
+            background: canRun ? '#22c55e' : '#374151',
+            color: '#fff', border: 'none', borderRadius: '6px',
+            fontSize: '13px', fontWeight: '600',
+            cursor: canRun ? 'pointer' : 'not-allowed',
+            fontFamily: 'sans-serif', transition: 'background 0.2s',
           }}
         >
-          <span style={{
-            color: '#4b5563',
-            fontSize: '11px',
-            minWidth: '16px',
-            textAlign: 'right',
-            userSelect: 'none'
-          }}>
-            {i + 1}
-          </span>
+          Run &#9654;
+        </button>
+      </div>
 
-          <span style={{ color: '#e2e8f0', flex: 1, display: 'flex', alignItems: 'center', gap: '4px' }}>
-            {line.hasFillin ? (
-              <>
-                <span style={{ color: '#f8f8f2' }}>{line.prefix}</span>
-                {locked ? (
-                  <span style={{
-                    color: '#22c55e',
-                    background: 'rgba(34,197,94,0.1)',
-                    padding: '0 6px',
-                    borderRadius: '4px',
-                    border: '1px solid rgba(34,197,94,0.3)',
-                    minWidth: '24px',
-                    textAlign: 'center'
-                  }}>
-                    {fillinValue}
-                  </span>
-                ) : (
-                  <input
-                    type="text"
-                    value={fillinValue}
-                    onChange={e => setFillinValue(e.target.value)}
-                    placeholder="?"
-                    style={{
-                      width: '48px',
-                      background: 'rgba(255,255,255,0.08)',
-                      border: '1px dashed #6366f1',
-                      borderRadius: '4px',
-                      color: '#818cf8',
-                      fontFamily: 'monospace',
-                      fontSize: '13px',
-                      padding: '1px 6px',
-                      outline: 'none',
-                      textAlign: 'center'
-                    }}
-                  />
-                )}
-                <span style={{ color: '#f8f8f2' }}>{line.suffix || ''}</span>
-              </>
-            ) : (
-              <span style={{ color: line.color || '#f8f8f2' }}>{line.code}</span>
-            )}
-          </span>
+      {/* Labels under inputs */}
+      <div style={{ display: 'flex', gap: '4px', marginTop: '2px', paddingLeft: '164px' }}>
+        <span style={{ fontSize: '10px', color: '#6b7280', fontFamily: 'sans-serif', width: '72px', textAlign: 'center' }}>age</span>
+        <span style={{ fontSize: '10px', color: '#6b7280', fontFamily: 'sans-serif', width: '88px', textAlign: 'center', marginLeft: '8px' }}>years older</span>
+      </div>
 
-          {line.annotation && (
-            <span style={{
-              fontSize: '11px',
-              color: '#4b5563',
-              fontFamily: 'sans-serif',
-              fontStyle: 'italic',
-              whiteSpace: 'nowrap'
-            }}>
-              ← {line.annotation}
-            </span>
-          )}
-        </div>
-      ))}
+      {/* Output */}
+      <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <span style={{ color: '#6b7280', fontSize: '11px', fontFamily: 'sans-serif' }}>output:</span>
+        <span style={{
+          color: hasResult ? '#22c55e' : '#4b5563',
+          fontSize: F.code, fontWeight: hasResult ? '600' : '400',
+          transition: 'color 0.3s',
+        }}>
+          {hasResult ? lastResult : '--'}
+        </span>
+        {hasResult && (
+          <span style={{ fontSize: '11px', color: '#6b7280', fontFamily: 'sans-serif', fontStyle: 'italic' }}>
+            find-sibling-age({ageVal}, {yearsVal}) = {lastResult}
+          </span>
+        )}
+      </div>
+
+      {/* Run count nudge */}
+      {runCount > 0 && runCount < 3 && (
+        <p style={{ fontSize: '12px', color: '#6b7280', fontFamily: 'sans-serif', marginTop: '10px', fontStyle: 'italic' }}>
+          Try a different age or a different gap. See what changes in the table.
+        </p>
+      )}
+    </div>
+  )
+}
+
+// ─── Output table ─────────────────────────────────────────────────────────────
+// First row is Priya/Asha pre-filled. New rows append as student runs the code.
+function OutputTable({ rows, lastIdx }) {
+  // Pre-filled anchor row
+  const anchorRow = { person: 'Priya', age: 9, yearsOlder: 4, sibling: 13, siblingName: 'Asha', isAnchor: true }
+  const allRows   = [anchorRow, ...rows]
+
+  return (
+    <div style={{
+      background: C.cardBg, border: `3px solid ${C.accent}`,
+      borderRadius: '14px', padding: '18px',
+      boxShadow: '0 4px 20px rgba(124,58,237,0.18)',
+      position: 'sticky', top: '20px',
+    }}>
+      <div style={{
+        display: 'inline-block', padding: '3px 10px', borderRadius: '20px',
+        background: C.pillBg, color: C.pillText,
+        fontSize: F.pill, fontWeight: '600', letterSpacing: '0.05em',
+        textTransform: 'uppercase', marginBottom: '8px'
+      }}>output table</div>
+
+      <h3 style={{ fontSize: '16px', fontWeight: '500', color: C.accentDark, marginBottom: '4px', marginTop: 0 }}>
+        find-sibling-age(age, years-older)
+      </h3>
+      <p style={{ fontSize: F.meta, color: C.mutedText, marginBottom: '14px' }}>
+        Each time you press Run, a new row appears here.
+      </p>
+
+      <div style={{
+        borderRadius: '8px', border: `0.5px solid ${C.cardBorder}`,
+        maxHeight: '500px', overflowY: 'auto',
+      }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
+            <tr style={{ background: C.accent }}>
+              <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: F.meta, fontWeight: '600', color: '#fff' }}>Age</th>
+              <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: F.meta, fontWeight: '600', color: '#fff' }}>Years older</th>
+              <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: F.meta, fontWeight: '600', color: '#fff' }}>Sibling's age</th>
+            </tr>
+          </thead>
+          <tbody>
+            {allRows.map((row, i) => {
+              const isAnchor = row.isAnchor
+              const isLatest = !isAnchor && i === lastIdx + 1 // offset by anchor row
+              return (
+                <tr key={i} style={{
+                  background: isAnchor
+                    ? C.successBg
+                    : isLatest
+                      ? C.accentLight
+                      : i % 2 === 0 ? C.cardBg : '#f3f0ff',
+                  outline: isLatest ? `2px solid ${C.accent}` : 'none',
+                  transition: 'background 0.3s',
+                }}>
+                  <td style={{ padding: '9px 10px', fontSize: F.body, color: C.accentDark, fontFamily: 'monospace', fontWeight: isAnchor ? '600' : '400' }}>
+                    {row.age}
+                    {isAnchor && (
+                      <span style={{ fontSize: '11px', color: C.successText, fontFamily: 'sans-serif', marginLeft: '6px', fontWeight: '400' }}>
+                        (Priya)
+                      </span>
+                    )}
+                  </td>
+                  <td style={{ padding: '9px 10px', fontSize: F.body, color: C.accentDark, fontFamily: 'monospace' }}>
+                    {row.yearsOlder}
+                  </td>
+                  <td style={{ padding: '9px 10px', fontSize: F.body, color: C.successText, fontFamily: 'monospace', fontWeight: '600' }}>
+                    {row.sibling}
+                    {isAnchor && (
+                      <span style={{ fontSize: '11px', color: C.successText, fontFamily: 'sans-serif', marginLeft: '6px', fontWeight: '400' }}>
+                        (Asha)
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <p style={{ fontSize: '12px', color: C.mutedText, marginTop: '8px', textAlign: 'center' }}>
+        {rows.length} {rows.length === 1 ? 'row' : 'rows'} added
+        {rows.length >= 5 && (
+          <span style={{ color: C.successText, fontWeight: '500' }}> -- the rule works for all of them!</span>
+        )}
+      </p>
     </div>
   )
 }
 
 // ─── Main PyretTab ────────────────────────────────────────────────────────────
+function PyretTab({ pyret, onUpdateProgress }) {
+  const [ageVal, setAgeVal]         = useState('')
+  const [yearsVal, setYearsVal]     = useState('')
+  const [tableRows, setTableRows]   = useState([])
+  const [lastIdx, setLastIdx]       = useState(null)
+  const [lastResult, setLastResult] = useState(null)
+  const [runCount, setRunCount]     = useState(0)
+  const [runFeedback, setRunFeedback] = useState(null)
 
-function PyretTab({ pyret, progress, onUpdateProgress }) {
-  const [currentStep, setCurrentStep] = useState(0)
-
-  const [matchAnswers, setMatchAnswers] = useState({})
-
-  const [predictValue, setPredictValue] = useState('')
-  const [predictFeedback, setPredictFeedback] = useState(null)
-
-  const [fillinValue, setFillinValue] = useState('')
-  const [fillinFeedback, setFillinFeedback] = useState(null)
-  const [fillinDone, setFillinDone] = useState(false)
-  const [fillinLocked, setFillinLocked] = useState(false)
-  const [lcdVisible, setLcdVisible] = useState(false)
-  const [showGraph, setShowGraph] = useState(false)
-
-  const [newConstant, setNewConstant] = useState('')
-  const [newConstantFeedback, setNewConstantFeedback] = useState(null)
-  const [newExpression, setNewExpression] = useState(null)
-
-  const [identifyAnswer, setIdentifyAnswer] = useState(null)
-  const [identifyFeedback, setIdentifyFeedback] = useState(null)
-
-  const [storyText, setStoryText] = useState('')
-  const [storyFeedback, setStoryFeedback] = useState(null)
-  const [storyLoading, setStoryLoading] = useState(false)
-
-  const [originalPoints, setOriginalPoints] = useState([])
-  const [newRulePoints, setNewRulePoints] = useState([])
-  const [lcdInput, setLcdInput] = useState('')
-  const [lcdUnlocked, setLcdUnlocked] = useState(false)
-
-  const steps = pyret?.pyretSteps || []
-  const codeExplanation = pyret?.codeExplanation || []
-  const originalExpression = pyret?.simulation?.expression || 'x + 4'
-
-  const activeConstant = lcdUnlocked && newConstant ? newConstant : '4'
-  const currentExpression = lcdUnlocked && newExpression ? newExpression : originalExpression
-  const isNewRule = lcdUnlocked && !!newExpression
-
-  const codeLines = [
-    {
-      code: 'fun thamarai-age(selvi-age):',
-      color: '#c084fc',
-      annotation: codeExplanation[0]?.explanation || 'defines the rule and its input'
-    },
-    {
-      hasFillin: true,
-      prefix: '  selvi-age + ',
-      suffix: '',
-      annotation: codeExplanation[1]?.explanation || 'your rule — add to get Thamarai\'s age'
-    },
-    {
-      code: 'end',
-      color: '#c084fc',
-      annotation: codeExplanation[2]?.explanation || 'the rule is finished'
-    }
-  ]
-
-  function handleMatchSubmit() {
-    const step = steps[0]
-    const allCorrect = step.items.every(item => matchAnswers[item.code] === item.match)
-    if (allCorrect) {
-      setCurrentStep(1)
-    } else {
-      alert('Some matches are incorrect. Try again.')
-    }
-  }
-
-  function handlePredictSubmit() {
-    const step = steps[1]
-    const val = parseFloat(predictValue)
-    if (val === step.validation.answer) {
-      setPredictFeedback({ type: 'success', message: step.validation.successMessage })
-      setCurrentStep(2)
-    } else {
-      setPredictFeedback({ type: 'hint', message: step.validation.hintMessage })
-    }
-  }
-
-  function handleFillinRun() {
-    const step = steps[2]
-    const expected = step?.expectedConstant ?? 4
-    const entered = parseFloat(fillinValue)
-
-    if (isNaN(entered)) {
-      setFillinFeedback({ type: 'hint', message: step?.validation?.hintMessage || 'Type a number.' })
+  function handleRun() {
+    const age   = parseFloat(ageVal)
+    const years = parseFloat(yearsVal)
+    if (isNaN(age) || isNaN(years) || years <= 0) {
+      setRunFeedback({ type: 'hint', message: 'Make sure both values are filled in and years-older is greater than 0.' })
       return
     }
-    if (entered !== expected) {
-      setFillinFeedback({ type: 'hint', message: step?.validation?.hintMessage || 'Check your table.' })
-      return
-    }
-
-    setFillinFeedback({ type: 'success', message: step?.validation?.successMessage || 'Correct!' })
-    setFillinDone(true)
-    setFillinLocked(true)
-    setLcdVisible(true)
-    setShowGraph(true)
-    setCurrentStep(3)
+    const sibling = age + years
+    setLastResult(sibling)
+    setRunFeedback(null)
+    setTableRows(prev => {
+      const newIdx = prev.length
+      setLastIdx(newIdx)
+      return [...prev, { age, yearsOlder: years, sibling }]
+    })
+    setRunCount(c => c + 1)
   }
-
-  function handleNewConstantSubmit() {
-    const step = steps[3]
-    const val = parseFloat(newConstant)
-    if (isNaN(val) || val === step?.validation?.excludeValue || val === 0) {
-      setNewConstantFeedback({ type: 'hint', message: step?.validation?.hintMessage || 'Try a different number.' })
-    } else {
-      setNewExpression(`x + ${val}`)
-      setNewRulePoints([])
-      setLcdInput('')
-      setFillinValue(String(val))
-      setFillinLocked(false)
-      setNewConstantFeedback({ type: 'success', message: `New rule set: x + ${val}` })
-      setCurrentStep(4)
-    }
-  }
-
-  function handleIdentifyAnswer(answer) {
-    const step = steps[4]
-    setIdentifyAnswer(answer)
-    if (answer === step?.validation?.answer) {
-      setIdentifyFeedback({ type: 'success', message: step.validation.successMessage })
-      setCurrentStep(5)
-    } else {
-      setIdentifyFeedback({ type: 'hint', message: step?.validation?.hintMessage })
-    }
-  }
-
-  function handleConfirm() {
-    setLcdUnlocked(true)
-    setFillinLocked(true)
-    setCurrentStep(6)
-  }
-
-  async function handleStorySubmit() {
-    const step = steps[6]
-    setStoryLoading(true)
-    const result = await validateAI(
-      {
-        prompt: step.prompt,
-        attemptCount: 0,
-        validation: { type: 'open-ended', concept: step.validation.concept }
-      },
-      storyText
-    )
-    setStoryLoading(false)
-    if (result.isCorrect) {
-      setStoryFeedback({ type: 'success', message: step.validation.successMessage })
-      if (onUpdateProgress) onUpdateProgress('pyret', { completed: true, story: storyText })
-    } else {
-      setStoryFeedback({ type: 'hint', message: result.message || step.validation.hintMessage })
-    }
-  }
-
-  const confirmPromptText = steps[5]?.promptTemplate?.replace('{number}', newConstant || '?')
 
   return (
-    <div className="panel" role="tabpanel" id="panel-pyret">
-      {pyret?.purpose && (
-        <div className="pyret-purpose">
-          <p>{pyret.purpose}</p>
+    <div className="panel" role="tabpanel" id="panel-pyret"
+      style={{ background: C.pageBg, position: 'relative', minHeight: '100%' }}>
+      <WatermarkLayer />
+      <div className="task-container" style={{ position: 'relative', zIndex: 1 }}>
+
+        {/* Objective */}
+        <div style={{
+          background: '#1e1b4b', borderRadius: '10px', padding: '14px 20px',
+          marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '12px'
+        }}>
+          <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#818cf8', flexShrink: 0 }} />
+          <p style={{ fontSize: '15px', color: '#e0e7ff', margin: 0 }}>
+            <span style={{ fontWeight: '500', color: '#a5b4fc' }}>Objective: </span>
+            I can use a Pyret function to find any sibling's age by changing the inputs.
+          </p>
         </div>
-      )}
 
-      <div className="pyret-main-layout">
-        <div className="pyret-left">
+        {/* Context card -- connects back to the story */}
+        <div style={{
+          background: C.accentLight, border: `0.5px solid ${C.cardBorder}`,
+          borderRadius: '12px', padding: '16px 22px', marginBottom: '22px'
+        }}>
+          <div style={{ fontSize: '11px', fontWeight: '600', color: C.accentDark, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>
+            the rule you found
+          </div>
+          <p style={{ fontSize: F.body, color: C.promptText, lineHeight: '1.6', marginBottom: '6px' }}>
+            In the Task tab you found that Asha's age = Priya's age + 4. In the graph you saw this works for any age.
+          </p>
+          <p style={{ fontSize: F.body, color: C.promptText, lineHeight: '1.6', margin: 0 }}>
+            Below is that same rule written as a Pyret function. The first row of the table is already filled with Priya and Asha.
+            Type any age and any gap into the function call and press Run -- that result fills the next row.
+          </p>
+        </div>
 
-          {/* Step 1 — Match */}
-          <div className="pyret-step">
-            <h3>{steps[0]?.title}</h3>
-            <p>{steps[0]?.prompt}</p>
-            <table className="match-table">
-              <tbody>
-                {steps[0]?.items?.map(item => (
-                  <tr key={item.code}>
-                    <td><code>{item.code}</code></td>
-                    <td>
-                      <select
-                        value={matchAnswers[item.code] || ''}
-                        onChange={e => setMatchAnswers(prev => ({ ...prev, [item.code]: e.target.value }))}
-                        disabled={currentStep > 0}
-                      >
-                        <option value="">Select...</option>
-                        {steps[0].items.map(i => (
-                          <option key={i.match} value={i.match}>{i.match}</option>
-                        ))}
-                      </select>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {currentStep === 0 && (
-              <button className="pyret-btn" onClick={handleMatchSubmit}>Check matches</button>
+        {/* Side-by-side: code LEFT, table RIGHT */}
+        <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+
+          {/* LEFT: code panel */}
+          <div style={{ flex: 1, minWidth: '340px', zIndex: 1 }}>
+            <div style={{
+              display: 'inline-block', padding: '3px 10px', borderRadius: '20px',
+              background: C.pillBg, color: C.pillText,
+              fontSize: F.pill, fontWeight: '600', letterSpacing: '0.05em',
+              textTransform: 'uppercase', marginBottom: '10px'
+            }}>the code</div>
+
+            <LiveCodePanel
+              ageVal={ageVal}     setAgeVal={setAgeVal}
+              yearsVal={yearsVal} setYearsVal={setYearsVal}
+              onRun={handleRun}
+              lastResult={lastResult}
+              runCount={runCount}
+            />
+
+            {runFeedback && <Msg type={runFeedback.type}>{runFeedback.message}</Msg>}
+
+            {/* Prompts that appear as student runs more */}
+            {runCount === 0 && (
+              <div style={{ marginTop: '16px', padding: '14px 18px', background: C.accentLight, borderRadius: '10px', border: `0.5px solid ${C.cardBorder}` }}>
+                <p style={{ fontSize: F.body, color: C.accentDark, margin: 0 }}>
+                  Try Priya's age (9) with a gap of 4. That is the Priya and Asha case. Then try a different age and a different gap.
+                </p>
+              </div>
             )}
-            {currentStep > 0 && <p className="feedback-success">✓ Matched correctly</p>}
+
+            {runCount >= 3 && (
+              <div style={{ marginTop: '16px', padding: '14px 18px', background: C.successBg, borderRadius: '10px', border: `0.5px solid ${C.successBdr}` }}>
+                <p style={{ fontSize: F.body, color: C.successText, marginBottom: '6px', fontWeight: '500' }}>
+                  Notice something?
+                </p>
+                <p style={{ fontSize: F.body, color: C.successText, margin: 0 }}>
+                  The rule on line 2 never changed. You only changed the inputs. One function, any result.
+                  That is the power of a function in code.
+                </p>
+              </div>
+            )}
           </div>
 
-          {/* Step 2 — Predict */}
-          {currentStep >= 1 && (
-            <div className="pyret-step">
-              <h3>{steps[1]?.title}</h3>
-              <p>{steps[1]?.prompt}</p>
-              <input
-                type="number"
-                value={predictValue}
-                onChange={e => setPredictValue(e.target.value)}
-                placeholder="Your prediction"
-                disabled={currentStep > 1}
-              />
-              {currentStep === 1 && (
-                <button className="pyret-btn" onClick={handlePredictSubmit}>Submit</button>
-              )}
-              {predictFeedback && (
-                <p className={predictFeedback.type === 'success' ? 'feedback-success' : 'feedback-hint'}>
-                  {predictFeedback.message}
-                </p>
-              )}
-            </div>
-          )}
+          {/* RIGHT: output table */}
+          <div style={{ flexShrink: 0, width: '340px', zIndex: 1 }}>
+            <div style={{
+              display: 'inline-block', padding: '3px 10px', borderRadius: '20px',
+              background: C.pillBg, color: C.pillText,
+              fontSize: F.pill, fontWeight: '600', letterSpacing: '0.05em',
+              textTransform: 'uppercase', marginBottom: '10px'
+            }}>output table</div>
 
-          {/* Step 3 — Fill in the rule */}
-          {currentStep >= 2 && (
-            <div className="pyret-step">
-              <h3>{steps[2]?.title}</h3>
-              <p>{steps[2]?.prompt}</p>
-
-              <AnnotatedCodeBlock
-                codeLines={codeLines}
-                fillinValue={fillinValue}
-                setFillinValue={setFillinValue}
-                locked={fillinLocked}
-              />
-
-              {!fillinDone && (
-                <>
-                  <p style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
-                    Type the missing number in the blank, then confirm.
-                  </p>
-                  <button className="pyret-btn" onClick={handleFillinRun}>
-                    Confirm rule ↗
-                  </button>
-                </>
-              )}
-
-              {fillinFeedback && (
-                <p className={fillinFeedback.type === 'success' ? 'feedback-success' : 'feedback-hint'}>
-                  {fillinFeedback.message}
-                </p>
-              )}
-
-              {currentStep > 2 && (
-                <p className="feedback-success">✓ Rule confirmed. Type ages in the LCD to test it.</p>
-              )}
-            </div>
-          )}
-
-          {/* Step 4 — Change the rule */}
-          {currentStep >= 3 && (
-            <div className="pyret-step">
-              <h3>{steps[3]?.title}</h3>
-              <p>{steps[3]?.prompt}</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '14px' }}>x +</span>
-                <input
-                  type="number"
-                  value={newConstant}
-                  onChange={e => setNewConstant(e.target.value)}
-                  placeholder={steps[3]?.inputLabel}
-                  disabled={currentStep > 3}
-                  style={{ width: '80px' }}
-                />
-              </div>
-              <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>{steps[3]?.hint}</p>
-              {currentStep === 3 && (
-                <button className="pyret-btn" onClick={handleNewConstantSubmit}>Set new rule</button>
-              )}
-              {newConstantFeedback && (
-                <p className={newConstantFeedback.type === 'success' ? 'feedback-success' : 'feedback-hint'}>
-                  {newConstantFeedback.message}
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Step 5 — Which line changed */}
-          {currentStep >= 4 && (
-            <div className="pyret-step">
-              <h3>{steps[4]?.title}</h3>
-              <p>{steps[4]?.prompt}</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
-                {steps[4]?.options?.map(opt => (
-                  <button
-                    key={opt}
-                    className={`pyret-option-btn ${identifyAnswer === opt ? 'selected' : ''}`}
-                    onClick={() => handleIdentifyAnswer(opt)}
-                    disabled={currentStep > 4}
-                    style={{ textAlign: 'left' }}
-                  >
-                    {opt}
-                  </button>
-                ))}
-              </div>
-              {identifyFeedback && (
-                <p className={identifyFeedback.type === 'success' ? 'feedback-success' : 'feedback-hint'}>
-                  {identifyFeedback.message}
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Step 6 — Confirm */}
-          {currentStep >= 5 && (
-            <div className="pyret-step">
-              <h3>{steps[5]?.title}</h3>
-              <p>{confirmPromptText}</p>
-              {currentStep === 5 && (
-                <button className="pyret-btn" onClick={handleConfirm}>
-                  {steps[5]?.confirmLabel}
-                </button>
-              )}
-              {currentStep > 5 && (
-                <>
-                  <p className="feedback-success">✓ Code updated</p>
-                  <div style={{ marginTop: '12px', padding: '10px 14px', background: '#eff6ff', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
-                    <p style={{ margin: 0, fontSize: '14px', color: '#1d4ed8' }}>
-                      Try your new rule in the LCD — type different ages and watch the output change.
-                    </p>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* Step 7 — Story */}
-          {currentStep >= 6 && newRulePoints.length >= 1 && (
-            <div className="pyret-step">
-              <h3>{steps[6]?.title}</h3>
-              <p>{steps[6]?.prompt}</p>
-              <textarea
-                value={storyText}
-                onChange={e => setStoryText(e.target.value)}
-                placeholder={steps[6]?.placeholder}
-                rows={4}
-                disabled={storyFeedback?.type === 'success'}
-              />
-              {storyFeedback?.type !== 'success' && (
-                <button className="pyret-btn" onClick={handleStorySubmit} disabled={storyLoading}>
-                  {storyLoading ? 'Checking...' : 'Submit'}
-                </button>
-              )}
-              {storyFeedback && (
-                <p className={storyFeedback.type === 'success' ? 'feedback-success' : 'feedback-hint'}>
-                  {storyFeedback.message}
-                </p>
-              )}
-            </div>
-          )}
+            <OutputTable rows={tableRows} lastIdx={lastIdx} />
+          </div>
 
         </div>
-
-        {/* Right panel — LCD */}
-        <div className="pyret-right">
-          {lcdVisible && (
-            <ArduinoLCD
-              simulation={pyret.simulation}
-              activeConstant={activeConstant}
-              originalPoints={originalPoints}
-              setOriginalPoints={setOriginalPoints}
-              newRulePoints={newRulePoints}
-              setNewRulePoints={setNewRulePoints}
-              showGraph={showGraph}
-              isNewRule={isNewRule}
-              originalExpression={originalExpression}
-              newExpression={newExpression}
-              lcdInput={lcdInput}
-              setLcdInput={setLcdInput}
-            />
-          )}
-        </div>
-
       </div>
     </div>
   )

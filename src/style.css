@@ -1399,3 +1399,17 @@ input { padding: 8px; margin-left: 8px; width: 260px; }
     position: static;
   }
 }
+/* ── PATCH: replace the two .task-container blocks ──────────────────────────
+   Old value:  max-width: 800px; margin: 0 auto;
+   New value:  fills available width, generous padding on all sides
+   Also removes the duplicate declaration that was present twice in the file.
+   Replace BOTH existing .task-container rules with this single one.
+────────────────────────────────────────────────────────────────────────── */
+ 
+.task-container {
+  padding: 1.5rem 2rem;
+  max-width: none;       /* remove the 800px cap */
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;             /* no auto-centering */
+}

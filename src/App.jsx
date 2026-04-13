@@ -16,17 +16,32 @@ import Login from './components/Login'
 
 const allLessons = [l0, l1, l2, l3]
 
+// ─── Derive the 4 graph points from the lesson's desmos.beforeGraph data ──────
+// This replaces the old approach of passing points up from TableBridgeStep.
+// The lesson JSON already contains the table mapping with coordinates.
+function deriveTablePoints(lesson) {
+  try {
+    return lesson.desmos.beforeGraph.tableMapping.map(row => {
+      // graphPoint is a string like "(10, 14)" -- parse x and y from it
+      const match = row.graphPoint.match(/\((\d+),\s*(\d+)\)/)
+      if (match) return { x: parseInt(match[1]), y: parseInt(match[2]) }
+      return null
+    }).filter(Boolean)
+  } catch {
+    return []
+  }
+}
+
 function App() {
-  const [user, setUser] = useState(null)
-  const [authLoading, setAuthLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('task')
-//const [activeTab, setActiveTab] = useState('pyret')
+  const [user, setUser]                       = useState(null)
+  const [authLoading, setAuthLoading]         = useState(true)
+  const [activeTab, setActiveTab]             = useState('task')
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0)
   const [unlockedLessons, setUnlockedLessons] = useState([0])
-  const [lessonProgress, setLessonProgress] = useState({})
-  const [tablePoints, setTablePoints] = useState([])
-  const [predictionMade, setPredictionMade] = useState(false)
-  const [userPrediction, setUserPrediction] = useState(null)
+  const [lessonProgress, setLessonProgress]   = useState({})
+  const [tablePoints, setTablePoints]         = useState([])
+  const [predictionMade, setPredictionMade]   = useState(false)
+  const [userPrediction, setUserPrediction]   = useState(null)
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -46,9 +61,16 @@ function App() {
     loadProgress(user.uid, lesson.id).then(data => {
       if (data) {
         setLessonProgress(data.lessonProgress || {})
-        setTablePoints(data.tablePoints || [])
         setPredictionMade(data.predictionMade || false)
         setUserPrediction(data.userPrediction || null)
+
+        // If Step 5 was previously completed, restore points from lesson data
+        const step5Done = (data.lessonProgress || {})[5]?.completed
+        if (step5Done) {
+          setTablePoints(deriveTablePoints(lesson))
+        } else {
+          setTablePoints(data.tablePoints || [])
+        }
       } else {
         setLessonProgress({})
         setTablePoints([])
@@ -99,10 +121,7 @@ function App() {
   async function updateStepProgress(stepId, updates) {
     const updated = {
       ...lessonProgress,
-      [stepId]: {
-        ...lessonProgress[stepId],
-        ...updates
-      }
+      [stepId]: { ...lessonProgress[stepId], ...updates }
     }
     setLessonProgress(updated)
     if (user) {
@@ -115,7 +134,10 @@ function App() {
     }
   }
 
-  async function handleTableComplete(points) {
+  // Called when Step 5 Continue button is clicked.
+  // Derives points from the lesson JSON so DesmosTab always gets real coordinates.
+  async function handleTableComplete() {
+    const points = deriveTablePoints(lesson)
     setTablePoints(points)
     if (user) {
       await saveProgress(user.uid, lesson.id, {
@@ -171,8 +193,7 @@ function App() {
                 padding: '6px 12px',
                 background: currentLessonIndex === index ? '#4f46e5' : '#e5e7eb',
                 color: currentLessonIndex === index ? 'white' : 'black',
-                border: 'none',
-                borderRadius: '6px',
+                border: 'none', borderRadius: '6px',
                 cursor: unlockedLessons.includes(index) ? 'pointer' : 'not-allowed',
                 opacity: unlockedLessons.includes(index) ? 1 : 0.4
               }}
@@ -205,10 +226,12 @@ function App() {
         {activeTab === 'desmos' && (
           <DesmosTab
             desmos={lesson.desmos}
+            problem={lesson.problem}
             tablePoints={tablePoints}
             onPredictionSubmit={handlePredictionSubmit}
             predictionMade={predictionMade}
             userPrediction={userPrediction}
+onTabChange={setActiveTab}
           />
         )}
         {activeTab === 'pyret' && (
